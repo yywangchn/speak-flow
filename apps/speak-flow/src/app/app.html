@@ -1,2 +1,54 @@
-<app-nx-welcome></app-nx-welcome>
+<main class="practice-shell">
+  <header class="topbar">
+    <a class="brand" href="/">SpeakFlow</a>
+    <span class="session-status">Text practice</span>
+  </header>
+
+  <section class="practice-layout" aria-labelledby="practice-title">
+    <div class="intro-panel">
+      <p class="eyebrow">One-to-one conversation</p>
+      <h1 id="practice-title">Start a practice conversation</h1>
+      <p class="intro-copy">Take turns, think out loud, and build confidence one reply at a time.</p>
+      <div class="topic-row">
+        <span class="topic-label">Today&apos;s topic</span>
+        <strong>Making a great first impression</strong>
+      </div>
+    </div>
+
+    <div class="conversation-panel">
+      <div class="conversation-header">
+        <div>
+          <span class="panel-kicker">Practice partner</span>
+          <h2>Warm-up conversation</h2>
+        </div>
+        <span class="turn-count">Turn {{ messages.length + 1 }}</span>
+      </div>
+
+      <div class="messages" aria-live="polite">
+        <div *ngFor="let message of messages" class="message" [class.user-message]="message.role === 'user'">
+          <span class="message-role">{{ message.role === 'user' ? 'You' : 'SpeakFlow' }}</span>
+          <p>{{ message.text }}</p>
+        </div>
+      </div>
+
+      <form class="reply-form" (ngSubmit)="sendMessage()">
+        <label for="reply">Your reply</label>
+        <textarea
+          id="reply"
+          name="reply"
+          [(ngModel)]="draft"
+          [disabled]="isComplete"
+          rows="3"
+          placeholder="Type what you would say..."
+        ></textarea>
+        <div class="form-actions">
+          <span class="helper-text">Keep it natural. There is no perfect answer.</span>
+          <button type="submit" [disabled]="!draft.trim() || isComplete">Send reply</button>
+        </div>
+      </form>
+
+      <div *ngIf="isComplete" class="complete-note">Nice work. You completed this practice conversation.</div>
+    </div>
+  </section>
+</main>
 <router-outlet></router-outlet>

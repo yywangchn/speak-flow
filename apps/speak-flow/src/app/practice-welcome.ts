@@ -2,7 +2,7 @@ import { Component, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'app-nx-welcome',
+  selector: 'app-practice-welcome',
   imports: [CommonModule],
   template: `
     <!--
@@ -434,7 +434,7 @@ import { CommonModule } from '@angular/common';
         <div id="welcome">
           <h1>
             <span> Hello there, </span>
-            Welcome speak-flow 👋
+            Welcome to SpeakFlow
           </h1>
         </div>
         <!--  HERO  -->
@@ -454,9 +454,9 @@ import { CommonModule } from '@angular/common';
                   d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
                 />
               </svg>
-              <span>You&apos;re up and running</span>
+              <span>Your speaking workspace is ready</span>
             </h2>
-            <a href="#commands"> What&apos;s next? </a>
+            <a href="#commands"> Start practicing </a>
           </div>
           <div class="logo-container">
             <svg
@@ -475,7 +475,7 @@ import { CommonModule } from '@angular/common';
         <div id="middle-content">
         <div id="middle-left-content">
           <div id="learning-materials" class="rounded shadow">
-            <h2>Learning materials</h2>
+            <h2>Practice resources</h2>
             <a href="https://nx.dev/getting-started/intro?utm_source=nx-project" target="_blank" rel="noreferrer" class="list-item-link">
               <svg
                 fill="none"
@@ -491,8 +491,8 @@ import { CommonModule } from '@angular/common';
                 />
               </svg>
               <span>
-                Documentation
-                <span> Everything is in there </span>
+                Speaking guides
+                <span> Build clarity and confidence </span>
               </span>
               <svg
                 fill="none"
@@ -523,8 +523,8 @@ import { CommonModule } from '@angular/common';
                 />
               </svg>
               <span>
-                Blog
-                <span> Changelog, features & events </span>
+                Daily prompts
+                <span> Fresh topics for every session </span>
               </span>
               <svg
                 fill="none"
@@ -553,8 +553,8 @@ import { CommonModule } from '@angular/common';
                 />
               </svg>
               <span>
-                YouTube channel
-                <span> Nx Show, talks & tutorials </span>
+                Listening library
+                <span> Talks, examples & inspiration </span>
               </span>
               <svg
                 fill="none"
@@ -585,8 +585,8 @@ import { CommonModule } from '@angular/common';
                 />
               </svg>
               <span>
-                Interactive tutorials
-                <span> Create an app, step-by-step </span>
+                Interactive drills
+                <span> Improve one skill at a time </span>
               </span>
               <svg
                 fill="none"
@@ -615,8 +615,8 @@ import { CommonModule } from '@angular/common';
                 />
               </svg>
               <span>
-                Nx is open source
-                <span> Love Nx? Give us a star! </span>
+                SpeakFlow community
+                <span> Practice together and keep improving </span>
               </span>
             </a>
           </div>
@@ -634,8 +634,8 @@ import { CommonModule } from '@angular/common';
                 />
               </svg>
               <span>
-                Install Nx Console for VSCode
-                <span>The official VSCode extension for Nx.</span>
+                Record with SpeakFlow
+                <span>Capture every practice session in one place.</span>
               </span>
             </a>
             <a
@@ -665,8 +665,8 @@ import { CommonModule } from '@angular/common';
                   </g>
                 </svg>
               <span>
-                Install Nx Console for JetBrains
-                <span>Available for WebStorm, Intellij IDEA Ultimate and more!</span>
+                Connect your workflow
+                <span>Bring your notes, goals and feedback together.</span>
               </span>
             </a>
             <div id="nx-cloud" class="rounded shadow">
@@ -676,25 +676,25 @@ import { CommonModule } from '@angular/common';
                   <path stroke-width="2" d="M23 6v14.1667C23 21.7307 21.7307 23 20.1667 23H6c0-3.128 2.53867-5.6667 5.6667-5.6667 3.128 0 5.6666-2.5386 5.6666-5.6666C17.3333 8.53867 19.872 6 23 6Z" />
                 </svg>
                 <h2>
-                  Nx Cloud
+                  SpeakFlow Cloud
                   <span>
-                    Enable faster CI & better DX
+                    Keep progress synced across devices
                   </span>
                 </h2>
               </div>
               <p>
-                You can activate distributed tasks executions and caching by
+                Sync your practice history and feedback by
                 running:
               </p>
-              <pre>nx connect</pre>
-              <a href="https://nx.dev/nx-cloud?utm_source=nx-project" target="_blank" rel="noreferrer"> What is Nx Cloud? </a>
+              <pre>speakflow sync</pre>
+              <a href="https://nx.dev/nx-cloud?utm_source=nx-project" target="_blank" rel="noreferrer"> Explore SpeakFlow Cloud </a>
             </div>
           </div>
         </div>
         <!--  COMMANDS  -->
                 <div id="commands" class="rounded shadow">
           <h2>Next steps</h2>
-          <p>Here are some things you can do with Nx:</p>
+          <p>Here are a few ways to make your next session count:</p>
           <details>
             <summary>
               <svg
@@ -710,16 +710,16 @@ import { CommonModule } from '@angular/common';
                   d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                 />
               </svg>
-              Build, test and lint your app
+              Prepare, practice and review your session
             </summary>
-            <pre><span># Build</span>
-nx build 
-<span># Test</span>
-nx test 
-<span># Lint</span>
-nx lint 
+            <pre><span># Prepare</span>
+speakflow prepare
+<span># Practice</span>
+speakflow practice
+<span># Review</span>
+speakflow review
 <span># Run them together!</span>
-nx run-many -t build test lint</pre>
+speakflow session</pre>
           </details>
           <details>
             <summary>
@@ -736,9 +736,9 @@ nx run-many -t build test lint</pre>
                   d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                 />
               </svg>
-              View project details
+              View session details
             </summary>
-            <pre>nx show project speak-flow</pre>
+            <pre>speakflow show session</pre>
           </details>
 
           <details>
@@ -756,9 +756,9 @@ nx run-many -t build test lint</pre>
                   d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                 />
               </svg>
-              View interactive project graph
+              View your progress map
             </summary>
-            <pre>nx graph</pre>
+            <pre>speakflow progress</pre>
           </details>
 
           <details>
@@ -776,16 +776,16 @@ nx run-many -t build test lint</pre>
                   d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                 />
               </svg>
-              Add UI library
+              Add a practice focus
             </summary>
-            <pre><span># Generate UI lib</span>
-nx g &#64;nx/angular:lib ui
-<span># Add a component</span>
-nx g &#64;nx/angular:component ui/src/lib/button</pre>
+            <pre><span># Choose a focus</span>
+speakflow focus pronunciation
+<span># Add a goal</span>
+speakflow goal &quot;Speak with clarity&quot;</pre>
           </details>
         </div>
         <p id="love">
-          Carefully crafted with
+          Crafted for thoughtful practice with
           <svg
             fill="currentColor"
             stroke="none"
@@ -806,4 +806,4 @@ nx g &#64;nx/angular:component ui/src/lib/button</pre>
   styles: [],
   encapsulation: ViewEncapsulation.None,
 })
-export class NxWelcome {}
+export class PracticeWelcome {}
