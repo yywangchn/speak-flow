@@ -59,6 +59,12 @@
       "continuous": true,
       "executor": "@angular/build:dev-server",
       "defaultConfiguration": "development",
+      "options": {
+        "allowedHosts": [
+          "localhost",
+          "127.0.0.1"
+        ]
+      },
       "configurations": {
         "production": {
           "buildTarget": "speak-flow:build:production"
@@ -70,6 +76,14 @@
     },
     "lint": {
       "executor": "@nx/eslint:lint"
+    },
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "config": "apps/speak-flow/vite.config.mts",
+        "reportsDirectory": "coverage/apps/speak-flow"
+      }
     },
     "serve-static": {
       "continuous": true,

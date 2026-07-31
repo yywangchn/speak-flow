@@ -13,8 +13,10 @@
     "lib": ["es2020", "dom"],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
-    "strict": false,
-    "paths": {}
+    "strict": true,
+    "paths": {
+      "@speak-flow/chat-data-access": ["./libs/chat/data-access/src/index.ts"]
+    }
   },
   "exclude": ["node_modules", "tmp"]
 }

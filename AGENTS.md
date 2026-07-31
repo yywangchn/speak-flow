@@ -13,6 +13,7 @@
 
 - 使用 Standalone Component，不创建 NgModule。
 - 业务组件默认使用 `ChangeDetectionStrategy.OnPush`；特殊情况可以说明原因后使用 Default。
+- Angular 组件样式统一使用 SCSS；Nx generator 的组件样式默认值保持为 `scss`。
 - 优先使用 `inject()` 进行依赖注入。
 - 非简单表单使用 Angular Reactive Forms。
 - 顶级业务页面使用懒加载路由，小型 UI 组件不做不必要的懒加载。
