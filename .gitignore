@@ -45,3 +45,10 @@ Thumbs.db
 .claude/settings.local.json
 
 .angular
+
+# local secrets
+.env
+.env.*
+!.env.example
+
+vitest.config.*.timestamp*

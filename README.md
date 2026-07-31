@@ -1,5 +1,17 @@
 # SpeakFlow
 
+## DeepSeek chat
+
+Set the server-side API key and start the development server:
+
+```sh
+export DEEPSEEK_API_KEY="your_deepseek_api_key"
+npx nx serve speak-flow
+```
+
+The browser calls the local `/api/chat` endpoint. Keep the API key on the
+server and never expose it in Angular configuration or client-side code.
+
 <a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
 
 ✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
