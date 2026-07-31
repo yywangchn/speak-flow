@@ -52,6 +52,12 @@
 - 优先使用不可变更新。
 - Service 和 facade 的公开方法应声明明确的返回类型。
 
+## 代码格式
+
+- 所有受版本控制的代码和配置文件应持续保持 Prettier 格式。
+- 提交前对受影响文件运行 `npx prettier --check`；需要格式化时使用 `npx prettier --write`。
+- 使用 Nx generator 后，应检查并清理无关文件的自动格式化变化，避免将格式噪音混入功能性 commit。
+
 ## 组件
 
 - Feature 组件负责协调状态和用户事件。
