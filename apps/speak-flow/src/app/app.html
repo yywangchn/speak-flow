@@ -21,14 +21,16 @@
           <span class="panel-kicker">Practice partner</span>
           <h2>Warm-up conversation</h2>
         </div>
-        <span class="turn-count">Turn {{ messages.length + 1 }}</span>
+        <span class="turn-count">Turn {{ messages().length + 1 }}</span>
       </div>
 
       <div class="messages" aria-live="polite">
-        <div *ngFor="let message of messages" class="message" [class.user-message]="message.role === 'user'">
-          <span class="message-role">{{ message.role === 'user' ? 'You' : 'SpeakFlow' }}</span>
-          <p>{{ message.text }}</p>
-        </div>
+        @for (message of messages(); track message.id) {
+          <div class="message" [class.user-message]="message.role === 'user'">
+            <span class="message-role">{{ message.role === 'user' ? 'You' : 'SpeakFlow' }}</span>
+            <p>{{ message.text }}</p>
+          </div>
+        }
       </div>
 
       <form class="reply-form" (ngSubmit)="sendMessage()">
@@ -36,18 +38,28 @@
         <textarea
           id="reply"
           name="reply"
-          [(ngModel)]="draft"
-          [disabled]="isComplete"
+          [ngModel]="draft()"
+          (ngModelChange)="draft.set($event)"
+          [disabled]="status().state === 'sending'"
+          (compositionstart)="onCompositionStart()"
+          (compositionend)="onCompositionEnd()"
+          (keydown)="onReplyKeydown($event)"
           rows="3"
           placeholder="Type what you would say..."
         ></textarea>
         <div class="form-actions">
           <span class="helper-text">Keep it natural. There is no perfect answer.</span>
-          <button type="submit" [disabled]="!draft.trim() || isComplete">Send reply</button>
+          <button type="submit" [disabled]="!draft().trim() || status().state === 'sending'">
+            {{ status().state === 'sending' ? 'Thinking...' : 'Send reply' }}
+          </button>
         </div>
       </form>
 
-      <div *ngIf="isComplete" class="complete-note">Nice work. You completed this practice conversation.</div>
+      @if (status(); as currentStatus) {
+        @if (currentStatus.state === 'error') {
+          <div class="error-note" role="alert">{{ currentStatus.message }}</div>
+        }
+      }
     </div>
   </section>
 </main>

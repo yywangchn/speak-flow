@@ -41,5 +41,5 @@ textarea:focus { outline: 2px solid #b9dbc9; border-color: #1f8a68; }
 .helper-text { color: #869189; font-size: .78rem; }
 button { border: 0; border-radius: 4px; padding: 11px 18px; background: #1f6b52; color: white; cursor: pointer; font: inherit; font-size: .86rem; font-weight: 600; }
 button:disabled { cursor: not-allowed; opacity: .42; }
-.complete-note { margin: 0 30px 26px; padding: 12px 14px; border-left: 3px solid #1f8a68; background: #edf4ef; color: #385444; font-size: .88rem; }
+.error-note { margin: 0 30px 26px; padding: 12px 14px; border-left: 3px solid #b33a3a; background: #fff2f1; color: #7d2828; font-size: .88rem; }
 @media (max-width: 760px) { .topbar { padding: 22px 20px; } .practice-layout { grid-template-columns: 1fr; gap: 35px; padding: 34px 20px 60px; } .intro-panel { padding-top: 0; } h1 { font-size: 2.8rem; } .topic-row { margin-top: 30px; } .conversation-header, .messages, .reply-form { padding-left: 20px; padding-right: 20px; } .form-actions { align-items: flex-start; flex-direction: column; } button { width: 100%; } }
