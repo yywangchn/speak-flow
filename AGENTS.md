@@ -59,6 +59,12 @@
 - 提交前对受影响文件运行 `npx prettier --check`；需要格式化时使用 `npx prettier --write`。
 - 使用 Nx generator 后，应检查并清理无关文件的自动格式化变化，避免将格式噪音混入功能性 commit。
 
+## UI 样式
+
+- `apps/speak-flow/src/app/practice-welcome.ts` 是本项目 UI 样式的主要参考文件；新增页面和组件应优先参考其中的排版、间距、色彩、响应式布局和交互状态。
+- 业务组件样式仍使用独立的 SCSS 文件，只提取实际需要的设计规则，不要复制整个 starter 模板或无关的全局 reset 样式。
+- 当设计决策与参考文件不一致时，应在组件或 feature 的边界内明确实现，避免把一次性业务样式扩散到全局。
+
 ## 组件
 
 - Feature 组件负责协调状态和用户事件。
