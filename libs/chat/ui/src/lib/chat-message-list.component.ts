@@ -20,5 +20,5 @@ import { ChatMessage } from '@speak-flow/chat-models';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ChatMessageListComponent {
-  readonly messages = input.required<readonly ChatMessage[]>();
+  readonly messages = input<readonly ChatMessage[]>([]);
 }

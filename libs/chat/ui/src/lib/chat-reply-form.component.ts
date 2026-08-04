@@ -43,8 +43,8 @@ import { ChatStatus } from '@speak-flow/chat-models';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ChatReplyFormComponent {
-  readonly draft = input.required<string>();
-  readonly status = input.required<ChatStatus>();
+  readonly draft = input('');
+  readonly status = input<ChatStatus>({ state: 'idle' });
   readonly draftChange = output<string>();
   readonly submitted = output<void>();
   readonly keydown = output<KeyboardEvent>();
