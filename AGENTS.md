@@ -1,13 +1,63 @@
 # SpeakFlow 工程规范
 
+## 产品背景
+
+SpeakFlow 是一个 AI 英语对话学习 Web 应用，主打陪伴式、朋友式的英文对话体验。
+
+用户可以与 AI 进行自然的英文交流，在持续对话中提升表达能力。AI 需要具备持久化记忆，能够记住用户曾经提到的信息、偏好和对话上下文，让后续交流更像与熟悉的朋友聊天。未来可能支持 AI 性格设定，例如语气、表达风格和陪伴方式。
+
+产品界面和功能应尽可能简洁，优先保证对话体验，不引入与核心交流无关的复杂功能。
+
+当前 MVP 只实现简单的文字对话闭环：
+
+1. 用户进入聊天页面。
+2. 用户发送英文消息。
+3. AI 返回英文回复。
+4. 页面展示连续聊天记录。
+5. 刷新或重新进入后，能够恢复必要的聊天记录和记忆。
+
+当前优先实现文本聊天闭环，暂不实现语音对话。
+
+## 业务模块职责
+
+- `chat`：负责 AI 聊天页面、消息列表、消息输入、发送状态、错误处理和聊天上下文。
+- `memory`：负责用户记忆的生成、展示、编辑、删除和持久化，为 AI 提供后续聊天所需的记忆上下文。
+- `profile`：负责用户基本信息、英语学习偏好和聊天偏好，为后续个性化聊天提供配置。
+- `personality`：预留 AI 性格和交流风格相关能力，例如语气、角色设定和陪伴方式；MVP 阶段可以暂不实现。
+- `shared`：存放跨业务复用的 UI 组件、基础模型、通用工具和基础数据访问能力。
+
+MVP 阶段优先实现 `chat` 和 `memory`，`profile` 只保留必要配置，`personality` 先预留模块边界，不提前实现复杂功能。
+
 ## 项目架构
 
 - 本项目是基于 Nx Integrated Monorepo 的 Angular Standalone 应用。
-- 按业务领域组织代码，包括 `practice`、`review`、`progress` 和 `shared`。
+- 按业务领域组织代码，包括 `chat`、`memory`、`profile`、`personality` 和 `shared`。
 - 应用项目应保持轻量，业务逻辑应放在 library 中。
 - Feature library 可以依赖 data-access、ui、models 和 shared library。
 - Shared library 不得依赖具体业务领域的 library。
 - 只有至少被两个业务领域使用的组件，才能移动到 shared 中。
+
+推荐的业务 library 结构：
+
+```text
+libs/
+├── chat/
+│   ├── feature/
+│   ├── data-access/
+│   ├── ui/
+│   └── models/
+├── memory/
+│   ├── feature/
+│   ├── data-access/
+│   ├── ui/
+│   └── models/
+├── profile/
+│   └── models/
+├── personality/
+└── shared/
+```
+
+`personality` 在 MVP 阶段只预留模块边界，不提前生成复杂实现。
 
 ## Angular
 
@@ -85,7 +135,7 @@
 ## Git
 
 - Commit message 使用英文。
-- 使用不带 scope 的简洁 Conventional Commits 格式，例如 `feat: add conversation setup form`。
+- 使用不带 scope 的简洁 Conventional Commits 格式，例如 `feat: add chat message input`。
 
 ## 完成标准
 
