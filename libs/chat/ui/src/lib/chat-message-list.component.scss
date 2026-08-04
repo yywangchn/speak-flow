@@ -1,0 +1,43 @@
+.messages {
+  display: grid;
+  gap: 20px;
+  min-height: 270px;
+  padding: 28px 30px;
+  background: #fbfcfb;
+}
+.message {
+  max-width: 84%;
+}
+.message p {
+  margin: 7px 0 0;
+  padding: 14px 16px;
+  border-radius: 4px 14px 14px 14px;
+  background: #edf4ef;
+  line-height: 1.55;
+}
+.message-role {
+  color: #1f8a68;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.user-message {
+  justify-self: end;
+  text-align: right;
+}
+.user-message .message-role {
+  color: #7a877f;
+}
+.user-message p {
+  border-radius: 14px 4px 14px 14px;
+  background: #1f6b52;
+  color: white;
+  text-align: left;
+}
+@media (max-width: 760px) {
+  .messages {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}

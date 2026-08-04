@@ -1,9 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { ChatService } from '@speak-flow/chat-data-access';
 import { of, Subject, throwError } from 'rxjs';
-import { App } from './app';
+import { ChatPageComponent } from '@speak-flow/chat-feature';
 
-describe('App', () => {
+describe('ChatPageComponent', () => {
   const chatService = {
     sendMessage: vi.fn(),
   };
@@ -11,13 +11,13 @@ describe('App', () => {
   beforeEach(async () => {
     chatService.sendMessage.mockReset();
     await TestBed.configureTestingModule({
-      imports: [App],
+      imports: [ChatPageComponent],
       providers: [{ provide: ChatService, useValue: chatService }],
     }).compileComponents();
   });
 
   it('renders the practice conversation', () => {
-    const fixture = TestBed.createComponent(App);
+    const fixture = TestBed.createComponent(ChatPageComponent);
 
     fixture.detectChanges();
 
@@ -31,7 +31,7 @@ describe('App', () => {
     chatService.sendMessage.mockReturnValue(
       of('That sounds good. What have you been up to?'),
     );
-    const fixture = TestBed.createComponent(App);
+    const fixture = TestBed.createComponent(ChatPageComponent);
     const component = fixture.componentInstance;
     component.draft.set('I am doing well today.');
 
@@ -48,7 +48,7 @@ describe('App', () => {
   });
 
   it('keeps Shift+Enter available for a new line', () => {
-    const fixture = TestBed.createComponent(App);
+    const fixture = TestBed.createComponent(ChatPageComponent);
     const event = new KeyboardEvent('keydown', {
       key: 'Enter',
       shiftKey: true,
@@ -62,7 +62,7 @@ describe('App', () => {
   });
 
   it('does not send Enter while an IME composition is active', () => {
-    const fixture = TestBed.createComponent(App);
+    const fixture = TestBed.createComponent(ChatPageComponent);
     const component = fixture.componentInstance;
     component.draft.set('ni hao');
     component.onCompositionStart();
@@ -78,7 +78,8 @@ describe('App', () => {
 
   it('ignores another submission while a reply is pending', () => {
     chatService.sendMessage.mockReturnValue(new Subject<string>());
-    const component = TestBed.createComponent(App).componentInstance;
+    const component =
+      TestBed.createComponent(ChatPageComponent).componentInstance;
     component.draft.set('First message');
 
     component.sendMessage();
@@ -95,7 +96,8 @@ describe('App', () => {
     chatService.sendMessage.mockReturnValue(
       throwError(() => new Error('Request failed')),
     );
-    const component = TestBed.createComponent(App).componentInstance;
+    const component =
+      TestBed.createComponent(ChatPageComponent).componentInstance;
     component.draft.set('Hello');
 
     component.sendMessage();

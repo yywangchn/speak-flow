@@ -15,7 +15,10 @@
     "skipDefaultLibCheck": true,
     "strict": true,
     "paths": {
-      "@speak-flow/chat-data-access": ["./libs/chat/data-access/src/index.ts"]
+      "@speak-flow/chat-data-access": ["./libs/chat/data-access/src/index.ts"],
+      "@speak-flow/chat-models": ["./libs/chat/models/src/index.ts"],
+      "@speak-flow/chat-ui": ["./libs/chat/ui/src/index.ts"],
+      "@speak-flow/chat-feature": ["./libs/chat/feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

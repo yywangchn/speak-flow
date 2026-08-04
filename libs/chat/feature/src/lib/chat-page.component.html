@@ -1,0 +1,43 @@
+<main class="practice-shell">
+  <header class="topbar">
+    <a class="brand" href="/">SpeakFlow</a
+    ><span class="session-status">Text practice</span>
+  </header>
+  <section class="practice-layout" aria-labelledby="practice-title">
+    <div class="intro-panel">
+      <p class="eyebrow">One-to-one conversation</p>
+      <h1 id="practice-title">Start a practice conversation</h1>
+      <p class="intro-copy">
+        Take turns, think out loud, and build confidence one reply at a time.
+      </p>
+      <div class="topic-row">
+        <span class="topic-label">Today&apos;s topic</span
+        ><strong>Making a great first impression</strong>
+      </div>
+    </div>
+    <div class="conversation-panel">
+      <div class="conversation-header">
+        <div>
+          <span class="panel-kicker">Practice partner</span>
+          <h2>Warm-up conversation</h2>
+        </div>
+        <span class="turn-count">Turn {{ messages().length + 1 }}</span>
+      </div>
+      <chat-message-list [messages]="messages()" />
+      <chat-reply-form
+        [draft]="draft()"
+        [status]="status()"
+        (draftChange)="draft.set($event)"
+        (submitted)="sendMessage()"
+        (keydown)="onReplyKeydown($event)"
+        (compositionStart)="onCompositionStart()"
+        (compositionEnd)="onCompositionEnd()"
+      />
+      @if (status(); as currentStatus) {
+        @if (currentStatus.state === 'error') {
+          <div class="error-note" role="alert">{{ currentStatus.message }}</div>
+        }
+      }
+    </div>
+  </section>
+</main>
