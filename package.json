@@ -2,7 +2,9 @@
   "name": "@speak-flow/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "start": "nx serve speak-flow --host 127.0.0.1 --port 4200"
+  },
   "private": true,
   "engines": {
     "node": ">=22.0.0 <23"
