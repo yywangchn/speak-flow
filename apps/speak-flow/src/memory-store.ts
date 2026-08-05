@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Memory, MemoryCategory } from '@speak-flow/memory-models';
+import { ExtractedMemory } from './memory-extraction';
 
 type MemoryRow = {
   id: string;
@@ -13,9 +14,12 @@ type MemoryRow = {
   confidence: number;
   created_at: string;
   updated_at: string;
+  memory_key?: string;
 };
 
-const databasePath = resolve(process.cwd(), 'data/speak-flow.sqlite');
+const databasePath =
+  process.env['SPEAKFLOW_DATABASE_PATH'] ??
+  resolve(process.cwd(), 'data/speak-flow.sqlite');
 mkdirSync(dirname(databasePath), { recursive: true });
 const database = new Database(databasePath);
 database.exec(`
@@ -26,12 +30,18 @@ database.exec(`
     category TEXT NOT NULL,
     source TEXT NOT NULL,
     confidence REAL NOT NULL,
+    memory_key TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     UNIQUE(user_id, content)
   );
   CREATE INDEX IF NOT EXISTS memories_user_id_idx ON memories(user_id);
 `);
+try {
+  database.exec('ALTER TABLE memories ADD COLUMN memory_key TEXT');
+} catch {
+  // Existing databases already have the column.
+}
 
 export function listMemories(userId: string): Memory[] {
   const rows = database
@@ -100,6 +110,34 @@ export function extractMemories(userId: string, text: string): void {
   const transaction = database.transaction(() => {
     for (const candidate of candidates)
       insert.run({ id: randomUUID(), userId, ...candidate, now });
+  });
+  transaction();
+}
+
+export function saveExtractedMemories(
+  userId: string,
+  memories: readonly ExtractedMemory[],
+): void {
+  const now = new Date().toISOString();
+  const insert = database.prepare(`
+    INSERT INTO memories (id, user_id, memory_key, content, category, source, confidence, created_at, updated_at)
+    VALUES (@id, @userId, @key, @content, @category, 'conversation', @confidence, @now, @now)
+    ON CONFLICT(user_id, content) DO UPDATE SET
+      memory_key = @key,
+      category = @category,
+      confidence = @confidence,
+      updated_at = @now
+  `);
+  const updateByKey = database.prepare(`
+    UPDATE memories SET content = @content, category = @category, confidence = @confidence, updated_at = @now
+    WHERE user_id = @userId AND memory_key = @key
+  `);
+  const transaction = database.transaction(() => {
+    for (const memory of memories) {
+      const updated = updateByKey.run({ userId, ...memory, now });
+      if (!updated.changes)
+        insert.run({ id: randomUUID(), userId, ...memory, now });
+    }
   });
   transaction();
 }

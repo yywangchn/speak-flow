@@ -7,7 +7,13 @@ import {
 import express from 'express';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { deleteMemory, extractMemories, listMemories } from './memory-store';
+import {
+  deleteMemory,
+  extractMemories,
+  listMemories,
+  saveExtractedMemories,
+} from './memory-store';
+import { parseExtractedMemories } from './memory-extraction';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
@@ -24,6 +30,43 @@ const getUserId = (value: unknown): string | null =>
   typeof value === 'string' && /^[a-zA-Z0-9-]{1,100}$/.test(value)
     ? value
     : null;
+
+async function extractMemoriesWithAi(
+  apiKey: string,
+  userId: string,
+  text: string,
+): Promise<void> {
+  const response = await fetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      temperature: 0,
+      stream: false,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'Extract only durable facts explicitly stated by the user. Ignore temporary events, guesses, sensitive data, and casual conversation. Return JSON only in the shape {"memories":[{"key":"profile.name","content":"...","category":"profile","confidence":0.95}]}. Allowed categories: profile, preference, goal, project, habit. Return an empty memories array when nothing should be saved.',
+        },
+        { role: 'user', content: text },
+      ],
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok)
+    throw new Error(`Memory extraction failed with ${response.status}`);
+  const result = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const raw = result.choices?.[0]?.message?.content?.trim();
+  if (!raw) return;
+  const memories = parseExtractedMemories(raw);
+  if (memories.length) saveExtractedMemories(userId, memories);
+}
 
 app.use(express.json({ limit: '32kb' }));
 
@@ -126,7 +169,13 @@ app.post('/api/chat', async (req, res) => {
       return;
     }
 
-    extractMemories(userId, messages.at(-1)?.content ?? '');
+    const latestUserMessage = messages.at(-1)?.content ?? '';
+    void extractMemoriesWithAi(apiKey, userId, latestUserMessage).catch(
+      (error: unknown) => {
+        console.error('Memory extraction failed:', error);
+        extractMemories(userId, latestUserMessage);
+      },
+    );
     res.json({ reply });
   } catch (error) {
     console.error('DeepSeek request failed:', error);
