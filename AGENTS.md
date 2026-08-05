@@ -132,6 +132,13 @@ libs/
 - 修复行为缺陷时，应添加对应的回归测试。
 - 在项目明确选定 E2E 工具之前，不要引入 E2E 测试框架。
 
+## Nx 项目与缓存
+
+- 新建 library 必须使用 Nx generator，或补齐等价的 `project.json`、TypeScript 和测试配置。
+- 新建 library 后运行 `npx nx show projects`，确认其已被 Nx project graph 识别。
+- 修改 library、路径别名或项目依赖关系后，最终验证至少运行一次带 `--skip-nx-cache` 的受影响测试。
+- 不得仅根据 Nx 缓存命中的测试结果判断新代码通过。
+
 ## Git
 
 - Commit message 使用英文。

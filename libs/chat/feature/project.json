@@ -1,0 +1,13 @@
+{
+  "name": "chat-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/chat/feature/src",
+  "prefix": "chat",
+  "projectType": "library",
+  "tags": ["domain:chat", "type:feature"],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

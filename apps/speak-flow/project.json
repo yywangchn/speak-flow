@@ -4,13 +4,12 @@
   "projectType": "application",
   "prefix": "app",
   "sourceRoot": "apps/speak-flow/src",
+  "implicitDependencies": ["chat-feature"],
   "tags": [],
   "targets": {
     "build": {
       "executor": "@angular/build:application",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
         "outputPath": "dist/apps/speak-flow",
@@ -23,9 +22,7 @@
             "input": "apps/speak-flow/public"
           }
         ],
-        "styles": [
-          "apps/speak-flow/src/styles.scss"
-        ],
+        "styles": ["apps/speak-flow/src/styles.scss"],
         "server": "apps/speak-flow/src/main.server.ts",
         "ssr": {
           "entry": "apps/speak-flow/src/server.ts"
@@ -60,10 +57,7 @@
       "executor": "@angular/build:dev-server",
       "defaultConfiguration": "development",
       "options": {
-        "allowedHosts": [
-          "localhost",
-          "127.0.0.1"
-        ]
+        "allowedHosts": ["localhost", "127.0.0.1"]
       },
       "configurations": {
         "production": {

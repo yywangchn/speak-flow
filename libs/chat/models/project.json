@@ -1,0 +1,12 @@
+{
+  "name": "chat-models",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/chat/models/src",
+  "projectType": "library",
+  "tags": ["domain:chat", "type:models"],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}
