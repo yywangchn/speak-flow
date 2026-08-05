@@ -16,14 +16,14 @@ describe('ChatPageComponent', () => {
     }).compileComponents();
   });
 
-  it('renders the practice conversation', () => {
+  it('renders the chat conversation', () => {
     const fixture = TestBed.createComponent(ChatPageComponent);
 
     fixture.detectChanges();
 
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('h1')?.textContent).toContain(
-      'Start a practice conversation',
+      'Warm-up conversation',
     );
   });
 
