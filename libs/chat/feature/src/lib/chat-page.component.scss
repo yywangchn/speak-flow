@@ -1,5 +1,7 @@
 .practice-shell {
   min-height: 100vh;
+  padding: 56px 24px;
+  box-sizing: border-box;
   background: #f5f7f4;
   color: #1f2a24;
   font-family:
@@ -11,47 +13,53 @@
     'Segoe UI',
     sans-serif;
 }
-.topbar {
+.conversation-panel {
+  display: flex;
+  flex-direction: column;
+  height: min(720px, calc(100dvh - 112px));
   max-width: 820px;
   margin: 0 auto;
-  padding: 28px 32px;
-}
-.brand {
-  color: #1f6b52;
-  font-size: 1.25rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-.conversation-panel {
-  max-width: 820px;
-  margin: 48px auto 80px;
   background: #fff;
   border: 1px solid #dfe7e1;
   border-radius: 8px;
   box-shadow: 0 18px 45px rgba(38, 65, 50, 0.08);
   overflow: hidden;
 }
+chat-message-list {
+  flex: 1;
+  height: 0;
+  min-height: 0;
+}
+chat-reply-form {
+  flex: none;
+}
 .conversation-header {
   display: flex;
-  justify-content: space-between;
-  align-items: start;
-  padding: 28px 30px;
+  align-items: center;
+  padding: 20px 30px;
   border-bottom: 1px solid #e8ede9;
 }
-.panel-kicker {
-  color: #1f8a68;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.partner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.presence {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #2f9e75;
+  box-shadow: 0 0 0 4px #e5f4ed;
 }
 h1 {
-  margin: 7px 0 0;
-  font-size: 1.3rem;
+  margin: 0;
+  font-size: 1.1rem;
 }
-.turn-count {
+.status {
+  display: block;
+  margin-top: 2px;
   color: #7a877f;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 .error-note {
   margin: 0 30px 26px;
@@ -62,11 +70,16 @@ h1 {
   font-size: 0.88rem;
 }
 @media (max-width: 760px) {
-  .topbar {
-    padding: 22px 20px;
+  .practice-shell {
+    padding: 0;
+    background: #fff;
   }
   .conversation-panel {
-    margin: 22px 20px 50px;
+    height: 100dvh;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
   .conversation-header {
     padding-left: 20px;

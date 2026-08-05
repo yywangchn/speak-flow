@@ -1,12 +1,13 @@
 <main class="practice-shell">
-  <header class="topbar"><a class="brand" href="/">SpeakFlow</a></header>
   <section class="conversation-panel" aria-labelledby="conversation-title">
     <div class="conversation-header">
-      <div>
-        <span class="panel-kicker">Practice partner</span>
-        <h1 id="conversation-title">Warm-up conversation</h1>
+      <div class="partner">
+        <span class="presence" aria-hidden="true"></span>
+        <div>
+          <h1 id="conversation-title">SpeakFlow</h1>
+          <span class="status">Online</span>
+        </div>
       </div>
-      <span class="turn-count">Turn {{ messages().length + 1 }}</span>
     </div>
     <chat-message-list [messages]="messages()" />
     <chat-reply-form

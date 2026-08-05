@@ -13,7 +13,7 @@ import { ChatStatus } from '@speak-flow/chat-models';
   imports: [FormsModule],
   template: `
     <form class="reply-form" (ngSubmit)="submitted.emit()">
-      <label for="reply">Your reply</label>
+      <label class="sr-only" for="reply">Message SpeakFlow</label>
       <textarea
         id="reply"
         name="reply"
@@ -23,20 +23,15 @@ import { ChatStatus } from '@speak-flow/chat-models';
         (compositionstart)="compositionStart.emit()"
         (compositionend)="compositionEnd.emit()"
         (keydown)="keydown.emit($event)"
-        rows="3"
-        placeholder="Type what you would say..."
+        rows="1"
+        placeholder="Message SpeakFlow..."
       ></textarea>
-      <div class="form-actions">
-        <span class="helper-text"
-          >Keep it natural. There is no perfect answer.</span
-        >
-        <button
-          type="submit"
-          [disabled]="!draft().trim() || status().state === 'sending'"
-        >
-          {{ status().state === 'sending' ? 'Thinking...' : 'Send reply' }}
-        </button>
-      </div>
+      <button
+        type="submit"
+        [disabled]="!draft().trim() || status().state === 'sending'"
+      >
+        {{ status().state === 'sending' ? 'Thinking...' : 'Send' }}
+      </button>
     </form>
   `,
   styleUrl: './chat-reply-form.component.scss',

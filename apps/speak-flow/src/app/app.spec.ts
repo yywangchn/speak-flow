@@ -22,9 +22,7 @@ describe('ChatPageComponent', () => {
     fixture.detectChanges();
 
     const element = fixture.nativeElement as HTMLElement;
-    expect(element.querySelector('h1')?.textContent).toContain(
-      'Warm-up conversation',
-    );
+    expect(element.querySelector('h1')?.textContent).toContain('SpeakFlow');
   });
 
   it('sends a reply on Enter and appends the API response', () => {
