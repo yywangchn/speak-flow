@@ -18,7 +18,11 @@
       "@speak-flow/chat-data-access": ["./libs/chat/data-access/src/index.ts"],
       "@speak-flow/chat-models": ["./libs/chat/models/src/index.ts"],
       "@speak-flow/chat-ui": ["./libs/chat/ui/src/index.ts"],
-      "@speak-flow/chat-feature": ["./libs/chat/feature/src/index.ts"]
+      "@speak-flow/chat-feature": ["./libs/chat/feature/src/index.ts"],
+      "@speak-flow/memory-models": ["./libs/memory/models/src/index.ts"],
+      "@speak-flow/memory-data-access": [
+        "./libs/memory/data-access/src/index.ts"
+      ]
     }
   },
   "exclude": ["node_modules", "tmp"]

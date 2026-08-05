@@ -27,6 +27,7 @@
         "ssr": {
           "entry": "apps/speak-flow/src/server.ts"
         },
+        "externalDependencies": ["better-sqlite3"],
         "outputMode": "server"
       },
       "configurations": {

@@ -7,6 +7,7 @@ import {
 import express from 'express';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { deleteMemory, extractMemories, listMemories } from './memory-store';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
@@ -19,12 +20,45 @@ type ChatMessage = {
   content: string;
 };
 
+const getUserId = (value: unknown): string | null =>
+  typeof value === 'string' && /^[a-zA-Z0-9-]{1,100}$/.test(value)
+    ? value
+    : null;
+
 app.use(express.json({ limit: '32kb' }));
+
+app.get('/api/memories', (req, res) => {
+  const userId = getUserId(req.query['userId']);
+  if (!userId) {
+    res.status(400).json({ error: 'A valid userId is required.' });
+    return;
+  }
+  res.json(listMemories(userId));
+});
+
+app.delete('/api/memories/:id', (req, res) => {
+  const userId = getUserId(req.query['userId']);
+  if (!userId) {
+    res.status(400).json({ error: 'A valid userId is required.' });
+    return;
+  }
+  if (!deleteMemory(userId, req.params['id'])) {
+    res.status(404).json({ error: 'Memory not found.' });
+    return;
+  }
+  res.status(204).send();
+});
 
 app.post('/api/chat', async (req, res) => {
   const apiKey = process.env['DEEPSEEK_API_KEY'];
   if (!apiKey) {
     res.status(503).json({ error: 'DeepSeek API key is not configured.' });
+    return;
+  }
+
+  const userId = getUserId(req.body?.userId);
+  if (!userId) {
+    res.status(400).json({ error: 'A valid userId is required.' });
     return;
   }
 
@@ -34,7 +68,7 @@ app.post('/api/chat', async (req, res) => {
           (message) =>
             (message?.role === 'user' || message?.role === 'assistant') &&
             typeof message.content === 'string' &&
-            message.content.trim().length > 0
+            message.content.trim().length > 0,
         )
         .slice(-20)
         .map((message) => ({
@@ -49,6 +83,10 @@ app.post('/api/chat', async (req, res) => {
   }
 
   try {
+    const memories = listMemories(userId);
+    const memoryContext = memories.length
+      ? `Known things about the user:\n${memories.map(({ content }) => `- ${content}`).join('\n')}`
+      : 'No saved memories about the user yet.';
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
@@ -63,8 +101,7 @@ app.post('/api/chat', async (req, res) => {
         messages: [
           {
             role: 'system',
-            content:
-              'You are SpeakFlow, a warm English conversation partner. Help the user practice natural spoken English. Reply in English in no more than 80 words, gently model better phrasing when useful, and ask exactly one relevant follow-up question. Do not use markdown unless the user asks for it.',
+            content: `You are SpeakFlow, a warm English conversation partner. Help the user practice natural spoken English. Reply in English in no more than 80 words, gently model better phrasing when useful, and ask exactly one relevant follow-up question. Do not use markdown unless the user asks for it.\n\n${memoryContext}`,
           },
           ...messages,
         ],
@@ -89,6 +126,7 @@ app.post('/api/chat', async (req, res) => {
       return;
     }
 
+    extractMemories(userId, messages.at(-1)?.content ?? '');
     res.json({ reply });
   } catch (error) {
     console.error('DeepSeek request failed:', error);
@@ -104,7 +142,7 @@ app.use(
     maxAge: '1y',
     index: false,
     redirect: false,
-  })
+  }),
 );
 
 /**
@@ -114,7 +152,7 @@ app.use('/**', (req, res, next) => {
   angularApp
     .handle(req)
     .then((response) =>
-      response ? writeResponseToNodeResponse(response, res) : next()
+      response ? writeResponseToNodeResponse(response, res) : next(),
     )
     .catch(next);
 });

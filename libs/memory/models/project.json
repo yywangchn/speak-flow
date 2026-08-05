@@ -1,0 +1,8 @@
+{
+  "name": "memory-models",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/memory/models/src",
+  "projectType": "library",
+  "tags": ["domain:memory", "type:models"],
+  "targets": { "lint": { "executor": "@nx/eslint:lint" } }
+}

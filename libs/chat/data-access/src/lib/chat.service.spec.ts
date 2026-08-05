@@ -31,6 +31,7 @@ describe('ChatService', () => {
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toEqual({
       messages: [{ role: 'user', content: 'Hello there.' }],
+      userId: expect.any(String),
     });
     request.flush({ reply: '  Hey! How are you?  ' });
 

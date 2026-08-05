@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { ChatService } from '@speak-flow/chat-data-access';
 import { of, Subject, throwError } from 'rxjs';
+// The route lazy-loads this feature; the app-level tests need the component directly.
+// eslint-disable-next-line @nx/enforce-module-boundaries
 import { ChatPageComponent } from '@speak-flow/chat-feature';
 
 describe('ChatPageComponent', () => {

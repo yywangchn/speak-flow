@@ -19,7 +19,7 @@ export class ChatService {
 
   sendMessage(messages: readonly ChatMessage[]): Observable<string> {
     return this.http
-      .post<ChatResponse>('/api/chat', { messages })
+      .post<ChatResponse>('/api/chat', { messages, userId: this.getUserId() })
       .pipe(
         timeout({ first: 35_000 }),
         map(({ reply }) => {
@@ -28,7 +28,16 @@ export class ChatService {
             throw new Error('Chat API returned an empty reply.');
           }
           return text;
-        })
+        }),
       );
+  }
+
+  private getUserId(): string {
+    const storageKey = 'speakflow.userId';
+    const existing = globalThis.localStorage?.getItem(storageKey);
+    if (existing) return existing;
+    const userId = globalThis.crypto.randomUUID();
+    globalThis.localStorage?.setItem(storageKey, userId);
+    return userId;
   }
 }
