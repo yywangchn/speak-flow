@@ -28,18 +28,45 @@ export class ChatPageComponent {
   private nextMessageId = 0;
 
   readonly draft = signal('');
-  readonly status = signal<ChatStatus>({ state: 'idle' });
-  readonly messages = signal<ChatMessage[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      text: "Hey! It's nice to chat with you. How's your day going?",
-    },
-  ]);
+  readonly status = signal<ChatStatus>({ state: 'loading' });
+  readonly messages = signal<ChatMessage[]>([]);
+
+  constructor() {
+    this.chatService
+      .loadHistory()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (history) => {
+          this.messages.set(
+            history.length
+              ? history.map(({ id, role, content: text }) => ({
+                  id,
+                  role,
+                  text,
+                }))
+              : [this.createWelcomeMessage()],
+          );
+          this.status.set({ state: 'idle' });
+        },
+        error: () => {
+          this.messages.set([this.createWelcomeMessage()]);
+          this.status.set({
+            state: 'error',
+            message:
+              'Previous messages could not be loaded. You can still start a new chat.',
+          });
+        },
+      });
+  }
 
   sendMessage(): void {
     const text = this.draft().trim();
-    if (!text || this.status().state === 'sending') return;
+    if (
+      !text ||
+      this.status().state === 'sending' ||
+      this.status().state === 'loading'
+    )
+      return;
     const nextMessages = [...this.messages(), this.createMessage('user', text)];
     this.messages.set(nextMessages);
     this.draft.set('');
@@ -88,5 +115,13 @@ export class ChatPageComponent {
   private createMessage(role: ChatRole, text: string): ChatMessage {
     this.nextMessageId += 1;
     return { id: `message-${this.nextMessageId}`, role, text };
+  }
+
+  private createWelcomeMessage(): ChatMessage {
+    return {
+      id: 'welcome',
+      role: 'assistant',
+      text: "Hey! It's nice to chat with you. How's your day going?",
+    };
   }
 }

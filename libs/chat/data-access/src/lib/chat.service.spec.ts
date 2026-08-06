@@ -38,6 +38,25 @@ describe('ChatService', () => {
     expect(reply).toBe('Hey! How are you?');
   });
 
+  it('loads recent messages for the anonymous user', () => {
+    let messages: readonly { id: string; role: string; content: string }[] = [];
+
+    service.loadHistory().subscribe((value) => (messages = value));
+
+    const request = http.expectOne(
+      (candidate) =>
+        candidate.url === '/api/chat/history' &&
+        typeof candidate.params.get('userId') === 'string',
+    );
+    request.flush({
+      messages: [
+        { id: 'saved-1', role: 'assistant', content: 'Welcome back!' },
+      ],
+    });
+
+    expect(messages).toHaveLength(1);
+  });
+
   it('rejects an empty reply', () => {
     let error: Error | undefined;
 

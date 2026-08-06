@@ -19,7 +19,9 @@ import { ChatStatus } from '@speak-flow/chat-models';
         name="reply"
         [ngModel]="draft()"
         (ngModelChange)="draftChange.emit($event)"
-        [disabled]="status().state === 'sending'"
+        [disabled]="
+          status().state === 'sending' || status().state === 'loading'
+        "
         (compositionstart)="compositionStart.emit()"
         (compositionend)="compositionEnd.emit()"
         (keydown)="keydown.emit($event)"
@@ -28,9 +30,19 @@ import { ChatStatus } from '@speak-flow/chat-models';
       ></textarea>
       <button
         type="submit"
-        [disabled]="!draft().trim() || status().state === 'sending'"
+        [disabled]="
+          !draft().trim() ||
+          status().state === 'sending' ||
+          status().state === 'loading'
+        "
       >
-        {{ status().state === 'sending' ? 'Thinking...' : 'Send' }}
+        {{
+          status().state === 'loading'
+            ? 'Loading...'
+            : status().state === 'sending'
+              ? 'Thinking...'
+              : 'Send'
+        }}
       </button>
     </form>
   `,

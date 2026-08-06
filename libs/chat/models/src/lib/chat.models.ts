@@ -7,6 +7,7 @@ export type ChatMessage = {
 };
 
 export type ChatStatus =
+  | { readonly state: 'loading' }
   | { readonly state: 'idle' }
   | { readonly state: 'sending' }
   | { readonly state: 'error'; readonly message: string };

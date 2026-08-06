@@ -8,10 +8,13 @@ import { ChatPageComponent } from '@speak-flow/chat-feature';
 describe('ChatPageComponent', () => {
   const chatService = {
     sendMessage: vi.fn(),
+    loadHistory: vi.fn(),
   };
 
   beforeEach(async () => {
     chatService.sendMessage.mockReset();
+    chatService.loadHistory.mockReset();
+    chatService.loadHistory.mockReturnValue(of([]));
     await TestBed.configureTestingModule({
       imports: [ChatPageComponent],
       providers: [{ provide: ChatService, useValue: chatService }],
@@ -44,6 +47,24 @@ describe('ChatPageComponent', () => {
     expect(component.messages().at(-1)?.text).toBe(
       'That sounds good. What have you been up to?',
     );
+    expect(component.status()).toEqual({ state: 'idle' });
+  });
+
+  it('restores recent messages when the page opens', () => {
+    chatService.loadHistory.mockReturnValue(
+      of([
+        { id: 'saved-1', role: 'user', content: 'Hello again.' },
+        { id: 'saved-2', role: 'assistant', content: 'Welcome back!' },
+      ]),
+    );
+
+    const component =
+      TestBed.createComponent(ChatPageComponent).componentInstance;
+
+    expect(component.messages()).toEqual([
+      { id: 'saved-1', role: 'user', text: 'Hello again.' },
+      { id: 'saved-2', role: 'assistant', text: 'Welcome back!' },
+    ]);
     expect(component.status()).toEqual({ state: 'idle' });
   });
 

@@ -13,6 +13,12 @@ type ChatResponse = {
   reply: string;
 };
 
+export type ChatHistoryMessage = ChatMessage & { readonly id: string };
+
+type ChatHistoryResponse = {
+  messages: readonly ChatHistoryMessage[];
+};
+
 @Injectable({ providedIn: 'root' })
 export class ChatService {
   private readonly http = inject(HttpClient);
@@ -30,6 +36,14 @@ export class ChatService {
           return text;
         }),
       );
+  }
+
+  loadHistory(): Observable<readonly ChatHistoryMessage[]> {
+    return this.http
+      .get<ChatHistoryResponse>('/api/chat/history', {
+        params: { userId: this.getUserId() },
+      })
+      .pipe(map(({ messages }) => messages));
   }
 
   private getUserId(): string {

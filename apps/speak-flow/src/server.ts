@@ -14,6 +14,7 @@ import {
   saveExtractedMemories,
 } from './memory-store';
 import { parseExtractedMemories } from './memory-extraction';
+import { listRecentMessages, saveChatMessage } from './chat-store';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
@@ -70,6 +71,15 @@ async function extractMemoriesWithAi(
 
 app.use(express.json({ limit: '32kb' }));
 
+app.get('/api/chat/history', (req, res) => {
+  const userId = getUserId(req.query['userId']);
+  if (!userId) {
+    res.status(400).json({ error: 'A valid userId is required.' });
+    return;
+  }
+  res.json({ messages: listRecentMessages(userId) });
+});
+
 app.get('/api/memories', (req, res) => {
   const userId = getUserId(req.query['userId']);
   if (!userId) {
@@ -94,11 +104,6 @@ app.delete('/api/memories/:id', (req, res) => {
 
 app.post('/api/chat', async (req, res) => {
   const apiKey = process.env['DEEPSEEK_API_KEY'];
-  if (!apiKey) {
-    res.status(503).json({ error: 'DeepSeek API key is not configured.' });
-    return;
-  }
-
   const userId = getUserId(req.body?.userId);
   if (!userId) {
     res.status(400).json({ error: 'A valid userId is required.' });
@@ -126,6 +131,12 @@ app.post('/api/chat', async (req, res) => {
   }
 
   try {
+    const latestUserMessage = messages.at(-1)?.content ?? '';
+    saveChatMessage(userId, 'user', latestUserMessage);
+    if (!apiKey) {
+      res.status(503).json({ error: 'DeepSeek API key is not configured.' });
+      return;
+    }
     const memories = listMemories(userId);
     const memoryContext = memories.length
       ? `Known things about the user:\n${memories.map(({ content }) => `- ${content}`).join('\n')}`
@@ -169,7 +180,7 @@ app.post('/api/chat', async (req, res) => {
       return;
     }
 
-    const latestUserMessage = messages.at(-1)?.content ?? '';
+    saveChatMessage(userId, 'assistant', reply);
     void extractMemoriesWithAi(apiKey, userId, latestUserMessage).catch(
       (error: unknown) => {
         console.error('Memory extraction failed:', error);
