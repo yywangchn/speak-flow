@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "start": "nx serve speak-flow --host 127.0.0.1 --port 4200"
+    "start": "nx serve speak-flow --host 127.0.0.1 --port 4200",
+    "eval:memory": "tsx tools/evals/run-memory-extraction.ts"
   },
   "private": true,
   "engines": {
@@ -54,6 +55,7 @@
     "nx": "23.1.0",
     "prettier": "~3.6.2",
     "tslib": "^2.3.0",
+    "tsx": "^4.23.9",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.58.0",
     "vite": "7.3.5",

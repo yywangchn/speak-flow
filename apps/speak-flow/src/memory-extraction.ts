@@ -1,5 +1,8 @@
 import { MemoryCategory } from '@speak-flow/memory-models';
 
+export const MEMORY_EXTRACTION_SYSTEM_PROMPT =
+  'Extract only durable facts explicitly stated by the user. Ignore temporary events, guesses, sensitive data, and casual conversation. Return JSON only in the shape {"memories":[{"key":"profile.name","content":"...","category":"profile","confidence":0.95}]}. Allowed categories: profile, preference, goal, project, habit. Use stable lowercase dot-separated keys; prefer profile.name, profile.location, preference.explanation_length, preference.learning_style, goal.english_learning, goal.career, project.current, and habit.study_schedule when applicable. Return an empty memories array when nothing should be saved.';
+
 export type ExtractedMemory = {
   key: string;
   content: string;

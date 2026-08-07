@@ -13,7 +13,10 @@ import {
   listMemories,
   saveExtractedMemories,
 } from './memory-store';
-import { parseExtractedMemories } from './memory-extraction';
+import {
+  MEMORY_EXTRACTION_SYSTEM_PROMPT,
+  parseExtractedMemories,
+} from './memory-extraction';
 import { listRecentMessages, saveChatMessage } from './chat-store';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
@@ -50,8 +53,7 @@ async function extractMemoriesWithAi(
       messages: [
         {
           role: 'system',
-          content:
-            'Extract only durable facts explicitly stated by the user. Ignore temporary events, guesses, sensitive data, and casual conversation. Return JSON only in the shape {"memories":[{"key":"profile.name","content":"...","category":"profile","confidence":0.95}]}. Allowed categories: profile, preference, goal, project, habit. Return an empty memories array when nothing should be saved.',
+          content: MEMORY_EXTRACTION_SYSTEM_PROMPT,
         },
         { role: 'user', content: text },
       ],

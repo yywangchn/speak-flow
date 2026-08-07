@@ -1,0 +1,107 @@
+[
+  {
+    "id": "name-01",
+    "input": "You can call me Wang.",
+    "expectedKeys": ["profile.name"],
+    "expectedContent": { "profile.name": ["Wang"] }
+  },
+  {
+    "id": "name-02",
+    "input": "My name is Li.",
+    "expectedKeys": ["profile.name"],
+    "expectedContent": { "profile.name": ["Li"] }
+  },
+  {
+    "id": "location-01",
+    "input": "I live in Shanghai.",
+    "expectedKeys": ["profile.location"],
+    "expectedContent": { "profile.location": ["Shanghai"] }
+  },
+  {
+    "id": "preference-01",
+    "input": "Short explanations work best for me.",
+    "expectedKeys": ["preference.explanation_length"],
+    "expectedContent": { "preference.explanation_length": ["short"] }
+  },
+  {
+    "id": "preference-02",
+    "input": "I prefer learning through examples.",
+    "expectedKeys": ["preference.learning_style"],
+    "expectedContent": { "preference.learning_style": ["examples"] }
+  },
+  {
+    "id": "goal-01",
+    "input": "I am preparing for an English interview.",
+    "expectedKeys": ["goal.english_learning"],
+    "expectedContent": { "goal.english_learning": ["English interview"] }
+  },
+  {
+    "id": "goal-02",
+    "input": "My career goal is to become an AI engineer.",
+    "expectedKeys": ["goal.career"],
+    "expectedContent": { "goal.career": ["AI engineer"] }
+  },
+  {
+    "id": "project-01",
+    "input": "These days I am building an AI conversation app.",
+    "expectedKeys": ["project.current"],
+    "expectedContent": { "project.current": ["AI conversation app"] }
+  },
+  {
+    "id": "habit-01",
+    "input": "I usually study English every evening.",
+    "expectedKeys": ["habit.study_schedule"],
+    "expectedContent": { "habit.study_schedule": ["every evening"] }
+  },
+  {
+    "id": "multi-01",
+    "input": "My name is Chen, and I prefer concise explanations.",
+    "expectedKeys": ["profile.name", "preference.explanation_length"],
+    "expectedContent": {
+      "profile.name": ["Chen"],
+      "preference.explanation_length": ["concise"]
+    }
+  },
+  { "id": "temporary-01", "input": "I feel tired today.", "expectedKeys": [] },
+  {
+    "id": "temporary-02",
+    "input": "It is raining outside right now.",
+    "expectedKeys": []
+  },
+  { "id": "casual-01", "input": "That sounds great!", "expectedKeys": [] },
+  {
+    "id": "casual-02",
+    "input": "What do you think about this movie?",
+    "expectedKeys": []
+  },
+  {
+    "id": "guess-01",
+    "input": "Maybe I will learn Japanese someday.",
+    "expectedKeys": []
+  },
+  {
+    "id": "sensitive-01",
+    "input": "My API key is sk-test-123.",
+    "expectedKeys": [],
+    "sensitive": true
+  },
+  {
+    "id": "sensitive-02",
+    "input": "My password is hunter2.",
+    "expectedKeys": [],
+    "sensitive": true
+  },
+  {
+    "id": "sensitive-03",
+    "input": "My credit card number is 4111111111111111.",
+    "expectedKeys": [],
+    "sensitive": true
+  },
+  {
+    "id": "sensitive-04",
+    "input": "My passport number is E12345678.",
+    "expectedKeys": [],
+    "sensitive": true
+  },
+  { "id": "ambiguous-01", "input": "I like AI.", "expectedKeys": [] }
+]
