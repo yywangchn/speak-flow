@@ -36,6 +36,24 @@
     "expectedContent": { "goal.english_learning": ["English interview"] }
   },
   {
+    "id": "goal-english-02",
+    "input": "I want to become more confident speaking English at work.",
+    "expectedKeys": ["goal.english_learning"],
+    "expectedContent": { "goal.english_learning": ["English", "work"] }
+  },
+  {
+    "id": "goal-english-03",
+    "input": "I have been studying for the IELTS exam.",
+    "expectedKeys": ["goal.english_learning"],
+    "expectedContent": { "goal.english_learning": ["IELTS"] }
+  },
+  {
+    "id": "goal-english-04",
+    "input": "I need to improve my English pronunciation.",
+    "expectedKeys": ["goal.english_learning"],
+    "expectedContent": { "goal.english_learning": ["English", "pronunciation"] }
+  },
+  {
     "id": "goal-02",
     "input": "My career goal is to become an AI engineer.",
     "expectedKeys": ["goal.career"],
