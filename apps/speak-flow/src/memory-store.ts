@@ -15,6 +15,8 @@ type MemoryRow = {
   created_at: string;
   updated_at: string;
   memory_key?: string;
+  embedding: string | null;
+  embedding_model: string | null;
 };
 
 const databasePath =
@@ -31,16 +33,30 @@ database.exec(`
     source TEXT NOT NULL,
     confidence REAL NOT NULL,
     memory_key TEXT,
+    embedding TEXT,
+    embedding_model TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     UNIQUE(user_id, content)
   );
   CREATE INDEX IF NOT EXISTS memories_user_id_idx ON memories(user_id);
 `);
-try {
+const memoryColumns = database
+  .prepare("PRAGMA table_info('memories')")
+  .all() as Array<{ name: string }>;
+
+const memoryColumnNames = new Set(memoryColumns.map(({ name }) => name));
+
+if (!memoryColumnNames.has('memory_key')) {
   database.exec('ALTER TABLE memories ADD COLUMN memory_key TEXT');
-} catch {
-  // Existing databases already have the column.
+}
+
+if (!memoryColumnNames.has('embedding')) {
+  database.exec('ALTER TABLE memories ADD COLUMN embedding TEXT');
+}
+
+if (!memoryColumnNames.has('embedding_model')) {
+  database.exec('ALTER TABLE memories ADD COLUMN embedding_model TEXT');
 }
 
 export function listMemories(userId: string): Memory[] {
