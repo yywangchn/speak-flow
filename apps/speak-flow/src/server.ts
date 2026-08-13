@@ -48,6 +48,16 @@ type ChatResponse = {
   status(code: number): ChatResponse;
 };
 
+type ChatStreamResponse = {
+  status(code: number): ChatStreamResponse;
+  setHeader(name: string, value: string): void;
+  write(chunk: string): boolean;
+  end(): void;
+};
+
+const CHAT_SYSTEM_PROMPT =
+  'You are SpeakFlow, a warm English conversation partner. Help the user practice natural spoken English. Reply in English in no more than 80 words, gently model better phrasing when useful, and ask exactly one relevant follow-up question. Do not use markdown unless the user asks for it.';
+
 const getUserId = (value: unknown): string | null =>
   typeof value === 'string' && /^[a-zA-Z0-9-]{1,100}$/.test(value)
     ? value
@@ -150,20 +160,102 @@ app.delete('/api/memories/:id', (req, res) => {
 });
 
 app.post('/api/chat', (req, res) => void handleChat(req, res));
+app.post('/api/chat/stream', (req, res) => void handleChatStream(req, res));
 
-export async function handleChat(
+export async function handleChatStream(
   req: ChatRequest,
-  res: ChatResponse,
+  res: ChatStreamResponse,
 ): Promise<void> {
   const apiKey = process.env['DEEPSEEK_API_KEY'];
   const userId = getUserId(req.body?.userId);
-  if (!userId) {
-    res.status(400).json({ error: 'A valid userId is required.' });
+  const messages = getChatMessages(req.body?.messages);
+  if (!userId || !messages.length || messages.at(-1)?.role !== 'user') {
+    writeStreamEvent(res.status(400), {
+      type: 'error',
+      message: 'A valid user message is required.',
+    });
+    return;
+  }
+  if (!apiKey) {
+    writeStreamEvent(res.status(503), {
+      type: 'error',
+      message: 'DeepSeek API key is not configured.',
+    });
     return;
   }
 
-  const messages = Array.isArray(req.body?.messages)
-    ? (req.body.messages as ChatMessage[])
+  const latestUserMessage = messages.at(-1)?.content ?? '';
+  saveChatMessage(userId, 'user', latestUserMessage);
+  const controller = new AbortController();
+  const promptMessages = await buildPromptMessages(
+    userId,
+    latestUserMessage,
+    messages,
+  );
+  res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('X-Accel-Buffering', 'no');
+
+  try {
+    const response = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        stream: true,
+        temperature: 0.8,
+        max_tokens: 180,
+        messages: promptMessages,
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok || !response.body) {
+      const details = await response.text();
+      console.error(`DeepSeek stream failed (${response.status}): ${details}`);
+      writeStreamEvent(res, {
+        type: 'error',
+        message: 'DeepSeek could not generate a reply.',
+      });
+      return;
+    }
+
+    let reply = '';
+    for await (const text of readDeepSeekStream(response.body)) {
+      reply += text;
+      writeStreamEvent(res, { type: 'delta', text });
+    }
+    if (!reply.trim()) {
+      writeStreamEvent(res, {
+        type: 'error',
+        message: 'DeepSeek returned an empty reply.',
+      });
+      return;
+    }
+    saveChatMessage(userId, 'assistant', reply);
+    void extractMemoriesWithAi(apiKey, userId, latestUserMessage).catch(
+      (error: unknown) => {
+        console.error('Memory extraction failed:', error);
+        extractMemories(userId, latestUserMessage);
+      },
+    );
+    writeStreamEvent(res, { type: 'complete' });
+  } catch (error: unknown) {
+    console.error('DeepSeek stream failed:', error);
+    writeStreamEvent(res, {
+      type: 'error',
+      message: 'Unable to reach DeepSeek.',
+    });
+  } finally {
+    res.end();
+  }
+}
+
+function getChatMessages(value: unknown): ChatMessage[] {
+  return Array.isArray(value)
+    ? (value as ChatMessage[])
         .filter(
           (message) =>
             (message?.role === 'user' || message?.role === 'assistant') &&
@@ -176,6 +268,116 @@ export async function handleChat(
           content: message.content.trim().slice(0, 4000),
         }))
     : [];
+}
+
+async function buildPromptMessages(
+  userId: string,
+  latestUserMessage: string,
+  messages: readonly ChatMessage[],
+): Promise<Array<{ role: 'system' | ChatMessage['role']; content: string }>> {
+  let memories = listMemories(userId);
+  const storedMemoryCount = memories.length;
+  const embeddingApiKey = process.env['DASHSCOPE_API_KEY'];
+  const embeddingBaseUrl = process.env['DASHSCOPE_BASE_URL'];
+  if (embeddingApiKey && embeddingBaseUrl) {
+    try {
+      const [queryVector] = await requestEmbeddings([latestUserMessage], {
+        apiKey: embeddingApiKey,
+        baseUrl: embeddingBaseUrl,
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (queryVector) {
+        const relevantMemories = findRelevantMemories(
+          userId,
+          queryVector,
+          MEMORY_RETRIEVAL_OPTIONS,
+        );
+        memories = relevantMemories;
+        console.info('Memory retrieval completed', {
+          userId,
+          storedMemoryCount,
+          returnedCount: relevantMemories.length,
+          model: EMBEDDING_MODEL,
+          ...MEMORY_RETRIEVAL_OPTIONS,
+          similarities: relevantMemories.map(({ similarity }) =>
+            Number(similarity.toFixed(3)),
+          ),
+        });
+      } else {
+        console.warn('Memory retrieval fallback', {
+          userId,
+          reason: 'Embedding service returned no query vector.',
+        });
+      }
+    } catch (error: unknown) {
+      console.warn('Memory retrieval fallback', {
+        userId,
+        reason: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  } else {
+    console.info('Memory retrieval skipped', {
+      userId,
+      reason: 'Embedding API is not configured.',
+    });
+  }
+  const memoryContext = memories.length
+    ? `Known things about the user:\n${memories.map(({ content }) => `- ${content}`).join('\n')}`
+    : 'No saved memories about the user yet.';
+  return [
+    { role: 'system', content: `${CHAT_SYSTEM_PROMPT}\n\n${memoryContext}` },
+    ...messages,
+  ];
+}
+
+function writeStreamEvent(
+  response: Pick<ChatStreamResponse, 'write' | 'end'>,
+  event: import('@speak-flow/chat-models').ChatStreamEvent,
+): void {
+  response.write(`${JSON.stringify(event)}\n`);
+  if (event.type === 'error') response.end();
+}
+
+async function* readDeepSeekStream(
+  body: ReadableStream<Uint8Array>,
+): AsyncGenerator<string> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  try {
+    while (true) {
+      const result = await reader.read();
+      if (result.done) break;
+      buffer += decoder.decode(result.value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        const data = line.trim().replace(/^data:\s*/, '');
+        if (!data || data === '[DONE]') continue;
+        const parsed = JSON.parse(data) as {
+          choices?: Array<{ delta?: { content?: string } }>;
+        };
+        const text = parsed.choices?.[0]?.delta?.content;
+        if (text) yield text;
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+export async function handleChat(
+  req: ChatRequest,
+  res: ChatResponse,
+): Promise<void> {
+  const apiKey = process.env['DEEPSEEK_API_KEY'];
+  const userId = getUserId(req.body?.userId);
+  if (!userId) {
+    res.status(400).json({ error: 'A valid userId is required.' });
+    return;
+  }
+
+  const messages = getChatMessages(req.body?.messages);
 
   if (!messages.length || messages.at(-1)?.role !== 'user') {
     res.status(400).json({ error: 'A user message is required.' });
@@ -189,55 +391,11 @@ export async function handleChat(
       res.status(503).json({ error: 'DeepSeek API key is not configured.' });
       return;
     }
-    let memories = listMemories(userId);
-    const storedMemoryCount = memories.length;
-    const embeddingApiKey = process.env['DASHSCOPE_API_KEY'];
-    const embeddingBaseUrl = process.env['DASHSCOPE_BASE_URL'];
-    if (embeddingApiKey && embeddingBaseUrl) {
-      try {
-        const [queryVector] = await requestEmbeddings([latestUserMessage], {
-          apiKey: embeddingApiKey,
-          baseUrl: embeddingBaseUrl,
-          signal: AbortSignal.timeout(15_000),
-        });
-        if (queryVector) {
-          const relevantMemories = findRelevantMemories(
-            userId,
-            queryVector,
-            MEMORY_RETRIEVAL_OPTIONS,
-          );
-          memories = relevantMemories;
-          console.info('Memory retrieval completed', {
-            userId,
-            storedMemoryCount,
-            returnedCount: relevantMemories.length,
-            model: EMBEDDING_MODEL,
-            ...MEMORY_RETRIEVAL_OPTIONS,
-            similarities: relevantMemories.map(({ similarity }) =>
-              Number(similarity.toFixed(3)),
-            ),
-          });
-        } else {
-          console.warn('Memory retrieval fallback', {
-            userId,
-            reason: 'Embedding service returned no query vector.',
-          });
-        }
-      } catch (error: unknown) {
-        console.warn('Memory retrieval fallback', {
-          userId,
-          reason: error instanceof Error ? error.message : 'Unknown error',
-        });
-      }
-    } else {
-      console.info('Memory retrieval skipped', {
-        userId,
-        reason: 'Embedding API is not configured.',
-      });
-    }
-    const memoryContext = memories.length
-      ? `Known things about the user:\n${memories.map(({ content }) => `- ${content}`).join('\n')}`
-      : 'No saved memories about the user yet.';
+    const promptMessages = await buildPromptMessages(
+      userId,
+      latestUserMessage,
+      messages,
+    );
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
@@ -249,13 +407,7 @@ export async function handleChat(
         stream: false,
         temperature: 0.8,
         max_tokens: 180,
-        messages: [
-          {
-            role: 'system',
-            content: `You are SpeakFlow, a warm English conversation partner. Help the user practice natural spoken English. Reply in English in no more than 80 words, gently model better phrasing when useful, and ask exactly one relevant follow-up question. Do not use markdown unless the user asks for it.\n\n${memoryContext}`,
-          },
-          ...messages,
-        ],
+        messages: promptMessages,
       }),
       signal: AbortSignal.timeout(30_000),
     });

@@ -11,12 +11,14 @@ process.env['DASHSCOPE_API_KEY'] = 'test-dashscope-key';
 process.env['DASHSCOPE_BASE_URL'] = 'https://embedding.example.com';
 
 let handleChat: (typeof import('./server'))['handleChat'];
+let handleChatStream: (typeof import('./server'))['handleChatStream'];
 let memoryStore: typeof import('./memory-store');
 let deepSeekPrompt = '';
 
 beforeAll(async () => {
   const serverModule = await import('./server');
   handleChat = serverModule.handleChat;
+  handleChatStream = serverModule.handleChatStream;
   memoryStore = await import('./memory-store');
 });
 
@@ -121,5 +123,75 @@ describe('chat API memory retrieval', () => {
       'The user is preparing for a frontend interview.',
     );
     expect(deepSeekPrompt).not.toContain('The user prefers pizza.');
+  });
+
+  it('forwards DeepSeek SSE deltas and saves the completed reply', async () => {
+    const userId = 'stream-test-user';
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input, init) => {
+        if (input.toString() === 'https://embedding.example.com/embeddings') {
+          return new Response(
+            JSON.stringify({ data: [{ index: 0, embedding: [1, 0] }] }),
+            { status: 200 },
+          );
+        }
+        const request = JSON.parse(String(init?.body)) as { stream?: boolean };
+        if (request.stream) {
+          return new Response(
+            'data: {"choices":[{"delta":{"content":"Hello"}}]}\n\ndata: {"choices":[{"delta":{"content":" there"}}]}\n\ndata: [DONE]\n\n',
+            { status: 200 },
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: '{"memories":[]}' } }],
+          }),
+          { status: 200 },
+        );
+      });
+    const infoMock = vi
+      .spyOn(console, 'info')
+      .mockImplementation(() => undefined);
+    const writtenEvents: string[] = [];
+    let status = 200;
+    let ended = false;
+
+    await handleChatStream(
+      {
+        body: {
+          userId,
+          messages: [{ role: 'user', content: 'Say hello.' }],
+        },
+      },
+      {
+        status(code) {
+          status = code;
+          return this;
+        },
+        setHeader() {
+          return undefined;
+        },
+        write(event) {
+          writtenEvents.push(event);
+          return true;
+        },
+        end() {
+          ended = true;
+          return undefined;
+        },
+      },
+    );
+
+    fetchMock.mockRestore();
+    infoMock.mockRestore();
+
+    expect(status).toBe(200);
+    expect(writtenEvents.map((event) => JSON.parse(event))).toEqual([
+      { type: 'delta', text: 'Hello' },
+      { type: 'delta', text: ' there' },
+      { type: 'complete' },
+    ]);
+    expect(ended).toBe(true);
   });
 });
