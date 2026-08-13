@@ -224,4 +224,119 @@ describe('memory store', () => {
     expect(JSON.parse(row.embedding)).toEqual([0.1, 0.2]);
     expect(row.embedding_model).toBe('text-embedding-v4');
   });
+
+  it('returns relevant memories sorted by similarity and limited to top results', () => {
+    const userId = 'retrieval-user';
+    memoryStore.saveExtractedMemories(
+      userId,
+      [
+        {
+          key: 'goal.one',
+          content: 'The user is preparing for interviews.',
+          category: 'goal',
+          confidence: 0.95,
+        },
+        {
+          key: 'goal.two',
+          content: 'The user practices English every day.',
+          category: 'goal',
+          confidence: 0.95,
+        },
+        {
+          key: 'preference.food',
+          content: 'The user prefers pizza.',
+          category: 'preference',
+          confidence: 0.95,
+        },
+      ],
+      [
+        { vector: [1, 0], model: 'text-embedding-v4' },
+        { vector: [0.8, 0.6], model: 'text-embedding-v4' },
+        { vector: [0, 1], model: 'text-embedding-v4' },
+      ],
+    );
+
+    const results = memoryStore.findRelevantMemories(userId, [1, 0], {
+      limit: 2,
+      minimumSimilarity: 0.7,
+    });
+
+    expect(results.map(({ content }) => content)).toEqual([
+      'The user is preparing for interviews.',
+      'The user practices English every day.',
+    ]);
+    expect(results[0]?.similarity).toBeCloseTo(1);
+    expect(results[1]?.similarity).toBeCloseTo(0.8);
+  });
+
+  it('ignores invalid, mismatched, and low-similarity embeddings', () => {
+    const userId = 'invalid-retrieval-user';
+    memoryStore.saveExtractedMemories(
+      userId,
+      [
+        {
+          key: 'goal.valid',
+          content: 'Valid memory.',
+          category: 'goal',
+          confidence: 0.95,
+        },
+      ],
+      [{ vector: [1, 0], model: 'text-embedding-v4' }],
+    );
+
+    const database = new Database(testDatabasePath);
+    database
+      .prepare(
+        'INSERT INTO memories (id, user_id, content, category, source, confidence, embedding, embedding_model, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        'invalid-memory',
+        userId,
+        'Invalid memory.',
+        'goal',
+        'conversation',
+        0.95,
+        'not-json',
+        'text-embedding-v4',
+        new Date().toISOString(),
+        new Date().toISOString(),
+      );
+    database
+      .prepare(
+        'INSERT INTO memories (id, user_id, content, category, source, confidence, embedding, embedding_model, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        'mismatched-memory',
+        userId,
+        'Mismatched memory.',
+        'goal',
+        'conversation',
+        0.95,
+        JSON.stringify([1, 0, 0]),
+        'text-embedding-v4',
+        new Date().toISOString(),
+        new Date().toISOString(),
+      );
+    database
+      .prepare(
+        'INSERT INTO memories (id, user_id, content, category, source, confidence, embedding, embedding_model, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        'low-similarity-memory',
+        userId,
+        'Low similarity memory.',
+        'goal',
+        'conversation',
+        0.95,
+        JSON.stringify([0, 1]),
+        'text-embedding-v4',
+        new Date().toISOString(),
+        new Date().toISOString(),
+      );
+    database.close();
+
+    const results = memoryStore.findRelevantMemories(userId, [1, 0]);
+
+    expect(results.map(({ content }) => content)).toEqual(['Valid memory.']);
+  });
 });

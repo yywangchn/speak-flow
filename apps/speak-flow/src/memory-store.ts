@@ -11,6 +11,8 @@ export type MemoryEmbedding = {
   model: typeof EMBEDDING_MODEL;
 };
 
+export type RelevantMemory = Memory & { similarity: number };
+
 type MemoryRow = {
   id: string;
   user_id: string;
@@ -72,6 +74,35 @@ export function listMemories(userId: string): Memory[] {
     )
     .all(userId) as MemoryRow[];
   return rows.map(toMemory);
+}
+
+export function findRelevantMemories(
+  userId: string,
+  queryVector: readonly number[],
+  options: { limit?: number; minimumSimilarity?: number } = {},
+): RelevantMemory[] {
+  const limit = options.limit ?? 3;
+  const minimumSimilarity = options.minimumSimilarity ?? 0.35;
+  if (limit <= 0 || !Number.isFinite(limit)) return [];
+
+  const rows = database
+    .prepare(
+      `SELECT * FROM memories
+       WHERE user_id = ? AND embedding IS NOT NULL AND embedding_model = ?`,
+    )
+    .all(userId, EMBEDDING_MODEL) as MemoryRow[];
+
+  return rows
+    .flatMap((row) => {
+      const vector = parseEmbedding(row.embedding);
+      if (!vector || vector.length !== queryVector.length) return [];
+      const similarity = cosineSimilarity(queryVector, vector);
+      return similarity >= minimumSimilarity
+        ? [{ ...toMemory(row), similarity }]
+        : [];
+    })
+    .sort((left, right) => right.similarity - left.similarity)
+    .slice(0, Math.floor(limit));
 }
 
 export function deleteMemory(userId: string, memoryId: string): boolean {
@@ -201,4 +232,40 @@ function toMemory(row: MemoryRow): Memory {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function parseEmbedding(value: string | null): EmbeddingVector | null {
+  if (!value) return null;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return isEmbeddingVector(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function isEmbeddingVector(value: unknown): value is EmbeddingVector {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every(
+      (item: unknown) => typeof item === 'number' && Number.isFinite(item),
+    )
+  );
+}
+
+function cosineSimilarity(
+  left: readonly number[],
+  right: readonly number[],
+): number {
+  let dot = 0;
+  let leftSquaredSum = 0;
+  let rightSquaredSum = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    dot += left[index] * right[index];
+    leftSquaredSum += left[index] * left[index];
+    rightSquaredSum += right[index] * right[index];
+  }
+  const denominator = Math.sqrt(leftSquaredSum) * Math.sqrt(rightSquaredSum);
+  return denominator === 0 ? 0 : dot / denominator;
 }

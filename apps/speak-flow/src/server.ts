@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import {
   deleteMemory,
   extractMemories,
+  findRelevantMemories,
   listMemories,
   saveExtractedMemories,
 } from './memory-store';
@@ -167,7 +168,23 @@ app.post('/api/chat', async (req, res) => {
       res.status(503).json({ error: 'DeepSeek API key is not configured.' });
       return;
     }
-    const memories = listMemories(userId);
+    let memories = listMemories(userId);
+    const embeddingApiKey = process.env['DASHSCOPE_API_KEY'];
+    const embeddingBaseUrl = process.env['DASHSCOPE_BASE_URL'];
+    if (embeddingApiKey && embeddingBaseUrl) {
+      try {
+        const [queryVector] = await requestEmbeddings([latestUserMessage], {
+          apiKey: embeddingApiKey,
+          baseUrl: embeddingBaseUrl,
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (queryVector) {
+          memories = findRelevantMemories(userId, queryVector);
+        }
+      } catch (error: unknown) {
+        console.error('Memory retrieval failed:', error);
+      }
+    }
     const memoryContext = memories.length
       ? `Known things about the user:\n${memories.map(({ content }) => `- ${content}`).join('\n')}`
       : 'No saved memories about the user yet.';
