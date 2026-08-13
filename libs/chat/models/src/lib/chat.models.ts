@@ -6,8 +6,16 @@ export type ChatMessage = {
   readonly text: string;
 };
 
+export type ChatStreamEvent =
+  | { readonly type: 'delta'; readonly text: string }
+  | { readonly type: 'complete' }
+  | { readonly type: 'error'; readonly message: string }
+  | { readonly type: 'cancelled' };
+
 export type ChatStatus =
   | { readonly state: 'loading' }
   | { readonly state: 'idle' }
   | { readonly state: 'sending' }
+  | { readonly state: 'streaming' }
+  | { readonly state: 'cancelled' }
   | { readonly state: 'error'; readonly message: string };
