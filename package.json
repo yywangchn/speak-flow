@@ -4,7 +4,8 @@
   "license": "MIT",
   "scripts": {
     "start": "nx serve speak-flow --host 127.0.0.1 --port 4200",
-    "eval:memory": "tsx tools/evals/run-memory-extraction.ts"
+    "eval:memory": "tsx tools/evals/run-memory-extraction.ts",
+    "eval:retrieval": "tsx tools/evals/run-memory-retrieval.ts"
   },
   "private": true,
   "engines": {

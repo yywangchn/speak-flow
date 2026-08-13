@@ -1,0 +1,52 @@
+[
+  {
+    "id": "interview-01",
+    "query": "How should I prepare for my job interview?",
+    "memories": [
+      "The user is preparing for a frontend interview.",
+      "The user prefers pizza.",
+      "The user studies English every evening."
+    ],
+    "relevantIndexes": [0]
+  },
+  {
+    "id": "english-goal-01",
+    "query": "I want to improve my English speaking confidence.",
+    "memories": [
+      "The user's goal is to improve English pronunciation.",
+      "The user's name is Wang.",
+      "The user is working on a finance project."
+    ],
+    "relevantIndexes": [0]
+  },
+  {
+    "id": "preference-01",
+    "query": "Please explain the answer briefly with examples.",
+    "memories": [
+      "The user prefers concise explanations with examples.",
+      "The user is preparing for an IELTS exam.",
+      "The user lives in Shanghai."
+    ],
+    "relevantIndexes": [0]
+  },
+  {
+    "id": "project-01",
+    "query": "What should I work on next in my app?",
+    "memories": [
+      "The user is building an AI conversation app.",
+      "The user prefers short explanations.",
+      "The user likes cooking Italian food."
+    ],
+    "relevantIndexes": [0]
+  },
+  {
+    "id": "no-match-01",
+    "query": "What is the weather like today?",
+    "memories": [
+      "The user's goal is to become an AI engineer.",
+      "The user studies English every evening.",
+      "The user prefers learning through examples."
+    ],
+    "relevantIndexes": []
+  }
+]
