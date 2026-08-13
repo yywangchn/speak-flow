@@ -4,6 +4,12 @@ import { dirname, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Memory, MemoryCategory } from '@speak-flow/memory-models';
 import { ExtractedMemory } from './memory-extraction';
+import { EMBEDDING_MODEL, EmbeddingVector } from './embedding-client';
+
+export type MemoryEmbedding = {
+  vector: EmbeddingVector;
+  model: typeof EMBEDDING_MODEL;
+};
 
 type MemoryRow = {
   id: string;
@@ -133,26 +139,52 @@ export function extractMemories(userId: string, text: string): void {
 export function saveExtractedMemories(
   userId: string,
   memories: readonly ExtractedMemory[],
+  embeddings: readonly (MemoryEmbedding | null)[] = memories.map(() => null),
 ): void {
+  if (embeddings.length !== memories.length) {
+    throw new Error('Each memory must have a corresponding embedding.');
+  }
+
   const now = new Date().toISOString();
   const insert = database.prepare(`
-    INSERT INTO memories (id, user_id, memory_key, content, category, source, confidence, created_at, updated_at)
-    VALUES (@id, @userId, @key, @content, @category, 'conversation', @confidence, @now, @now)
+    INSERT INTO memories (id, user_id, memory_key, content, category, source, confidence, embedding, embedding_model, created_at, updated_at)
+    VALUES (@id, @userId, @key, @content, @category, 'conversation', @confidence, @embedding, @embeddingModel, @now, @now)
     ON CONFLICT(user_id, content) DO UPDATE SET
       memory_key = @key,
       category = @category,
       confidence = @confidence,
+      embedding = COALESCE(@embedding, embedding),
+      embedding_model = COALESCE(@embeddingModel, embedding_model),
       updated_at = @now
   `);
   const updateByKey = database.prepare(`
-    UPDATE memories SET content = @content, category = @category, confidence = @confidence, updated_at = @now
+    UPDATE memories SET
+      content = @content,
+      category = @category,
+      confidence = @confidence,
+      embedding = CASE
+        WHEN content <> @content THEN @embedding
+        ELSE COALESCE(@embedding, embedding)
+      END,
+      embedding_model = CASE
+        WHEN content <> @content THEN @embeddingModel
+        ELSE COALESCE(@embeddingModel, embedding_model)
+      END,
+      updated_at = @now
     WHERE user_id = @userId AND memory_key = @key
   `);
   const transaction = database.transaction(() => {
-    for (const memory of memories) {
-      const updated = updateByKey.run({ userId, ...memory, now });
-      if (!updated.changes)
-        insert.run({ id: randomUUID(), userId, ...memory, now });
+    for (const [index, memory] of memories.entries()) {
+      const embedding = embeddings[index];
+      const parameters = {
+        userId,
+        ...memory,
+        embedding: embedding ? JSON.stringify(embedding.vector) : null,
+        embeddingModel: embedding?.model ?? null,
+        now,
+      };
+      const updated = updateByKey.run(parameters);
+      if (!updated.changes) insert.run({ id: randomUUID(), ...parameters });
     }
   });
   transaction();

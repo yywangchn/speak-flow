@@ -2,9 +2,12 @@ export type EmbeddingClientOptions = {
   apiKey: string;
   baseUrl: string;
   fetchFn?: typeof fetch;
+  signal?: AbortSignal;
 };
 
 export type EmbeddingVector = number[];
+
+export const EMBEDDING_MODEL = 'text-embedding-v4' as const;
 
 type EmbeddingResponse = {
   data?: Array<{
@@ -30,6 +33,7 @@ export async function requestEmbeddings(
       model: 'text-embedding-v4',
       input,
     }),
+    signal: options.signal,
   });
 
   if (!response.ok) {

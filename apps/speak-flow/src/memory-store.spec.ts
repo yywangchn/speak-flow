@@ -79,4 +79,149 @@ describe('memory store', () => {
       }),
     ]);
   });
+
+  it('stores an embedding with an extracted memory', () => {
+    memoryStore.saveExtractedMemories(
+      'embedding-user',
+      [
+        {
+          key: 'goal.career',
+          content: 'The user is preparing for a frontend interview.',
+          category: 'goal',
+          confidence: 0.95,
+        },
+      ],
+      [{ vector: [0.1, 0.2], model: 'text-embedding-v4' }],
+    );
+
+    const database = new Database(testDatabasePath, { readonly: true });
+    const row = database
+      .prepare(
+        'SELECT embedding, embedding_model FROM memories WHERE user_id = ?',
+      )
+      .get('embedding-user') as {
+      embedding: string;
+      embedding_model: string;
+    };
+    database.close();
+
+    expect(JSON.parse(row.embedding)).toEqual([0.1, 0.2]);
+    expect(row.embedding_model).toBe('text-embedding-v4');
+  });
+
+  it('clears a stale embedding when keyed memory content changes without a new vector', () => {
+    const userId = 'stale-embedding-user';
+    memoryStore.saveExtractedMemories(
+      userId,
+      [
+        {
+          key: 'profile.name',
+          content: "The user's name is Wang.",
+          category: 'profile',
+          confidence: 0.98,
+        },
+      ],
+      [{ vector: [0.1, 0.2], model: 'text-embedding-v4' }],
+    );
+
+    memoryStore.saveExtractedMemories(userId, [
+      {
+        key: 'profile.name',
+        content: "The user's name is Li.",
+        category: 'profile',
+        confidence: 0.99,
+      },
+    ]);
+
+    const database = new Database(testDatabasePath, { readonly: true });
+    const row = database
+      .prepare(
+        'SELECT content, embedding, embedding_model FROM memories WHERE user_id = ?',
+      )
+      .get(userId) as {
+      content: string;
+      embedding: string | null;
+      embedding_model: string | null;
+    };
+    database.close();
+
+    expect(row).toEqual({
+      content: "The user's name is Li.",
+      embedding: null,
+      embedding_model: null,
+    });
+  });
+
+  it('replaces a stale embedding when keyed memory content changes with a new vector', () => {
+    const userId = 'updated-embedding-user';
+    memoryStore.saveExtractedMemories(
+      userId,
+      [
+        {
+          key: 'profile.name',
+          content: "The user's name is Wang.",
+          category: 'profile',
+          confidence: 0.98,
+        },
+      ],
+      [{ vector: [0.1, 0.2], model: 'text-embedding-v4' }],
+    );
+
+    memoryStore.saveExtractedMemories(
+      userId,
+      [
+        {
+          key: 'profile.name',
+          content: "The user's name is Li.",
+          category: 'profile',
+          confidence: 0.99,
+        },
+      ],
+      [{ vector: [0.8, 0.9], model: 'text-embedding-v4' }],
+    );
+
+    const database = new Database(testDatabasePath, { readonly: true });
+    const row = database
+      .prepare(
+        'SELECT content, embedding, embedding_model FROM memories WHERE user_id = ?',
+      )
+      .get(userId) as {
+      content: string;
+      embedding: string;
+      embedding_model: string;
+    };
+    database.close();
+
+    expect(row.content).toBe("The user's name is Li.");
+    expect(JSON.parse(row.embedding)).toEqual([0.8, 0.9]);
+    expect(row.embedding_model).toBe('text-embedding-v4');
+  });
+
+  it('keeps an embedding when the same keyed content is saved without a new vector', () => {
+    const userId = 'same-content-user';
+    const memory = {
+      key: 'profile.name' as const,
+      content: "The user's name is Wang.",
+      category: 'profile' as const,
+      confidence: 0.98,
+    };
+
+    memoryStore.saveExtractedMemories(
+      userId,
+      [memory],
+      [{ vector: [0.1, 0.2], model: 'text-embedding-v4' }],
+    );
+    memoryStore.saveExtractedMemories(userId, [memory]);
+
+    const database = new Database(testDatabasePath, { readonly: true });
+    const row = database
+      .prepare(
+        'SELECT embedding, embedding_model FROM memories WHERE user_id = ?',
+      )
+      .get(userId) as { embedding: string; embedding_model: string };
+    database.close();
+
+    expect(JSON.parse(row.embedding)).toEqual([0.1, 0.2]);
+    expect(row.embedding_model).toBe('text-embedding-v4');
+  });
 });

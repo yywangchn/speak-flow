@@ -18,6 +18,7 @@ import {
   parseExtractedMemories,
 } from './memory-extraction';
 import { listRecentMessages, saveChatMessage } from './chat-store';
+import { EMBEDDING_MODEL, requestEmbeddings } from './embedding-client';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
@@ -68,7 +69,34 @@ async function extractMemoriesWithAi(
   const raw = result.choices?.[0]?.message?.content?.trim();
   if (!raw) return;
   const memories = parseExtractedMemories(raw);
-  if (memories.length) saveExtractedMemories(userId, memories);
+  if (!memories.length) return;
+
+  const embeddingApiKey = process.env['DASHSCOPE_API_KEY'];
+  const embeddingBaseUrl = process.env['DASHSCOPE_BASE_URL'];
+  if (!embeddingApiKey || !embeddingBaseUrl) {
+    saveExtractedMemories(userId, memories);
+    return;
+  }
+
+  try {
+    const vectors = await requestEmbeddings(
+      memories.map(({ content }) => content),
+      {
+        apiKey: embeddingApiKey,
+        baseUrl: embeddingBaseUrl,
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+    saveExtractedMemories(
+      userId,
+      memories,
+      vectors.map((vector) => ({ vector, model: EMBEDDING_MODEL })),
+    );
+  } catch (error: unknown) {
+    // Embedding is an enhancement; text memory must still survive an API failure.
+    console.error('Memory embedding failed:', error);
+    saveExtractedMemories(userId, memories);
+  }
 }
 
 app.use(express.json({ limit: '32kb' }));
