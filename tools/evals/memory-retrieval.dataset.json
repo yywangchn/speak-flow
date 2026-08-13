@@ -48,5 +48,147 @@
       "The user prefers learning through examples."
     ],
     "relevantIndexes": []
+  },
+  {
+    "id": "interview-weak-01",
+    "query": "I have an interview coming up. What can I do?",
+    "memories": [
+      "The user is preparing for a backend engineering interview.",
+      "The user enjoys watching football.",
+      "The user prefers short explanations."
+    ],
+    "relevantIndexes": [0]
+  },
+  {
+    "id": "interview-multi-01",
+    "query": "Can we practice questions for my English interview?",
+    "memories": [
+      "The user is preparing for an English interview.",
+      "The user wants to improve spoken English confidence.",
+      "The user likes pizza.",
+      "The user lives in Beijing."
+    ],
+    "relevantIndexes": [0, 1]
+  },
+  {
+    "id": "chinese-english-01",
+    "query": "我想提升工作中的英语表达。",
+    "memories": [
+      "The user wants to speak English more confidently at work.",
+      "The user is building an AI conversation app.",
+      "The user prefers coffee."
+    ],
+    "relevantIndexes": [0]
+  },
+  {
+    "id": "chinese-preference-01",
+    "query": "请给我一个简短并且有例子的解释。",
+    "memories": [
+      "The user prefers concise explanations with examples.",
+      "The user is studying for IELTS.",
+      "The user is interested in machine learning."
+    ],
+    "relevantIndexes": [0]
+  },
+  {
+    "id": "pronunciation-01",
+    "query": "How can I pronounce English words more clearly?",
+    "memories": [
+      "The user wants to improve English pronunciation.",
+      "The user prefers learning with examples.",
+      "The user is applying for product manager jobs."
+    ],
+    "relevantIndexes": [0]
+  },
+  {
+    "id": "study-habit-01",
+    "query": "Can you help me plan my evening English practice?",
+    "memories": [
+      "The user usually studies English every evening.",
+      "The user is building a finance dashboard.",
+      "The user prefers tea."
+    ],
+    "relevantIndexes": [0]
+  },
+  {
+    "id": "career-project-01",
+    "query": "What should I focus on to become an AI engineer?",
+    "memories": [
+      "The user's career goal is to become an AI engineer.",
+      "The user is working on an AI conversation app.",
+      "The user prefers detailed explanations.",
+      "The user lives in Shanghai."
+    ],
+    "relevantIndexes": [0, 1]
+  },
+  {
+    "id": "location-01",
+    "query": "What can I do in Shanghai this weekend?",
+    "memories": [
+      "The user lives in Shanghai.",
+      "The user is preparing for a frontend interview.",
+      "The user studies English every evening."
+    ],
+    "relevantIndexes": [0]
+  },
+  {
+    "id": "food-no-match-01",
+    "query": "Recommend a good pasta recipe.",
+    "memories": [
+      "The user is preparing for IELTS.",
+      "The user wants to become an AI engineer.",
+      "The user prefers concise explanations."
+    ],
+    "relevantIndexes": []
+  },
+  {
+    "id": "casual-no-match-01",
+    "query": "Tell me a funny story.",
+    "memories": [
+      "The user is building an AI conversation app.",
+      "The user lives in Beijing.",
+      "The user studies English every evening."
+    ],
+    "relevantIndexes": []
+  },
+  {
+    "id": "learning-style-01",
+    "query": "Could you teach this with a concrete example?",
+    "memories": [
+      "The user prefers learning through examples.",
+      "The user is preparing for an interview.",
+      "The user likes hiking."
+    ],
+    "relevantIndexes": [0]
+  },
+  {
+    "id": "project-next-01",
+    "query": "I am stuck on my AI chat product. What feature should I build?",
+    "memories": [
+      "The user is building an AI conversation app.",
+      "The user wants to improve English pronunciation.",
+      "The user prefers pizza."
+    ],
+    "relevantIndexes": [0]
+  },
+  {
+    "id": "ielts-01",
+    "query": "How should I study for IELTS speaking?",
+    "memories": [
+      "The user is preparing for an IELTS exam.",
+      "The user wants to improve spoken English confidence.",
+      "The user is working on a mobile game."
+    ],
+    "relevantIndexes": [0, 1]
+  },
+  {
+    "id": "unrelated-tech-01",
+    "query": "How do I fix a leaking faucet?",
+    "memories": [
+      "The user is preparing for an English interview.",
+      "The user lives in Shanghai.",
+      "The user prefers examples."
+    ],
+    "relevantIndexes": []
   }
 ]

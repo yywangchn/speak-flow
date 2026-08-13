@@ -23,6 +23,10 @@ import { EMBEDDING_MODEL, requestEmbeddings } from './embedding-client';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
+const MEMORY_RETRIEVAL_OPTIONS = {
+  limit: 3,
+  minimumSimilarity: 0.35,
+} as const;
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();
@@ -169,6 +173,7 @@ app.post('/api/chat', async (req, res) => {
       return;
     }
     let memories = listMemories(userId);
+    const storedMemoryCount = memories.length;
     const embeddingApiKey = process.env['DASHSCOPE_API_KEY'];
     const embeddingBaseUrl = process.env['DASHSCOPE_BASE_URL'];
     if (embeddingApiKey && embeddingBaseUrl) {
@@ -179,11 +184,39 @@ app.post('/api/chat', async (req, res) => {
           signal: AbortSignal.timeout(15_000),
         });
         if (queryVector) {
-          memories = findRelevantMemories(userId, queryVector);
+          const relevantMemories = findRelevantMemories(
+            userId,
+            queryVector,
+            MEMORY_RETRIEVAL_OPTIONS,
+          );
+          memories = relevantMemories;
+          console.info('Memory retrieval completed', {
+            userId,
+            storedMemoryCount,
+            returnedCount: relevantMemories.length,
+            model: EMBEDDING_MODEL,
+            ...MEMORY_RETRIEVAL_OPTIONS,
+            similarities: relevantMemories.map(({ similarity }) =>
+              Number(similarity.toFixed(3)),
+            ),
+          });
+        } else {
+          console.warn('Memory retrieval fallback', {
+            userId,
+            reason: 'Embedding service returned no query vector.',
+          });
         }
       } catch (error: unknown) {
-        console.error('Memory retrieval failed:', error);
+        console.warn('Memory retrieval fallback', {
+          userId,
+          reason: error instanceof Error ? error.message : 'Unknown error',
+        });
       }
+    } else {
+      console.info('Memory retrieval skipped', {
+        userId,
+        reason: 'Embedding API is not configured.',
+      });
     }
     const memoryContext = memories.length
       ? `Known things about the user:\n${memories.map(({ content }) => `- ${content}`).join('\n')}`
