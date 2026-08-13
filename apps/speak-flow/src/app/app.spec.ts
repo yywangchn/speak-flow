@@ -103,20 +103,34 @@ describe('ChatPageComponent', () => {
     component.onCompositionEnd();
   });
 
-  it('ignores another submission while a reply is pending', () => {
-    chatService.streamMessage.mockReturnValue(new Subject());
+  it('cancels a streaming reply before sending a new message', () => {
+    const firstStream = new Subject<{
+      type: 'delta' | 'complete';
+      text?: string;
+    }>();
+    chatService.streamMessage.mockReturnValueOnce(firstStream);
+    chatService.streamMessage.mockReturnValueOnce(
+      of({ type: 'delta', text: 'New reply.' }, { type: 'complete' }),
+    );
     const component =
       TestBed.createComponent(ChatPageComponent).componentInstance;
     component.draft.set('First message');
-
     component.sendMessage();
+    firstStream.next({ type: 'delta', text: 'Partial reply.' });
+
     component.draft.set('Second message');
     component.sendMessage();
 
-    expect(chatService.streamMessage).toHaveBeenCalledOnce();
-    expect(
-      component.messages().filter(({ role }) => role === 'user'),
-    ).toHaveLength(1);
+    expect(firstStream.observed).toBe(false);
+    expect(chatService.streamMessage).toHaveBeenCalledTimes(2);
+    expect(component.messages().map(({ text }) => text)).toEqual([
+      "Hey! It's nice to chat with you. How's your day going?",
+      'First message',
+      'Partial reply.',
+      'Second message',
+      'New reply.',
+    ]);
+    expect(component.status()).toEqual({ state: 'idle' });
   });
 
   it('shows a recoverable error when the request fails', () => {

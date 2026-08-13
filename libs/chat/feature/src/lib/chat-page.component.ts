@@ -6,6 +6,7 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subscription } from 'rxjs';
 import {
   ChatMessage,
   ChatRole,
@@ -31,6 +32,7 @@ export class ChatPageComponent {
   private readonly destroyRef = inject(DestroyRef);
   private isComposing = false;
   private nextMessageId = 0;
+  private activeStream?: Subscription;
 
   readonly draft = signal('');
   readonly status = signal<ChatStatus>({ state: 'loading' });
@@ -66,17 +68,16 @@ export class ChatPageComponent {
 
   sendMessage(): void {
     const text = this.draft().trim();
-    if (
-      !text ||
-      this.status().state === 'sending' ||
-      this.status().state === 'loading'
-    )
-      return;
+    if (!text || this.status().state === 'loading') return;
+    if (this.status().state === 'streaming') {
+      this.activeStream?.unsubscribe();
+      this.status.set({ state: 'cancelled' });
+    }
     const nextMessages = [...this.messages(), this.createMessage('user', text)];
     this.messages.set(nextMessages);
     this.draft.set('');
     this.status.set({ state: 'sending' });
-    this.chatService
+    this.activeStream = this.chatService
       .streamMessage(
         nextMessages.map(({ role, text: content }) => ({ role, content })),
       )
