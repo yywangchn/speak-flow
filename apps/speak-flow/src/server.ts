@@ -28,12 +28,24 @@ const MEMORY_RETRIEVAL_OPTIONS = {
   minimumSimilarity: 0.35,
 } as const;
 
-const app = express();
-const angularApp = new AngularNodeAppEngine();
+export const app = express();
+let angularApp: AngularNodeAppEngine | undefined;
 
 type ChatMessage = {
   role: 'user' | 'assistant';
   content: string;
+};
+
+type ChatRequest = {
+  body?: {
+    userId?: unknown;
+    messages?: unknown;
+  };
+};
+
+type ChatResponse = {
+  json(body: unknown): void;
+  status(code: number): ChatResponse;
 };
 
 const getUserId = (value: unknown): string | null =>
@@ -137,7 +149,12 @@ app.delete('/api/memories/:id', (req, res) => {
   res.status(204).send();
 });
 
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', (req, res) => void handleChat(req, res));
+
+export async function handleChat(
+  req: ChatRequest,
+  res: ChatResponse,
+): Promise<void> {
   const apiKey = process.env['DEEPSEEK_API_KEY'];
   const userId = getUserId(req.body?.userId);
   if (!userId) {
@@ -272,7 +289,7 @@ app.post('/api/chat', async (req, res) => {
     console.error('DeepSeek request failed:', error);
     res.status(502).json({ error: 'Unable to reach DeepSeek.' });
   }
-});
+}
 
 /**
  * Serve static files from /browser
@@ -289,7 +306,8 @@ app.use(
  * Handle all other requests by rendering the Angular application.
  */
 app.use('/**', (req, res, next) => {
-  angularApp
+  const engine = (angularApp ??= new AngularNodeAppEngine());
+  engine
     .handle(req)
     .then((response) =>
       response ? writeResponseToNodeResponse(response, res) : next(),
