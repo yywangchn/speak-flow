@@ -4,6 +4,7 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { firstValueFrom, toArray } from 'rxjs';
 import { ChatService } from './chat.service';
 
 describe('ChatService', () => {
@@ -82,5 +83,53 @@ describe('ChatService', () => {
     });
 
     expect(status).toBe(503);
+  });
+
+  it('parses streaming events from the chat stream endpoint', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            '{"type":"delta","text":"Hello"}\n{"type":"complete"}\n',
+            { status: 200 },
+          ),
+        ),
+    );
+
+    const events = await firstValueFrom(
+      service
+        .streamMessage([{ role: 'user', content: 'Hello there.' }])
+        .pipe(toArray()),
+    );
+
+    expect(events).toEqual([
+      { type: 'delta', text: 'Hello' },
+      { type: 'complete' },
+    ]);
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/chat/stream',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it('turns a stream error event into an observable error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response('{"type":"error","message":"The reply failed."}\n', {
+          status: 200,
+        }),
+      ),
+    );
+
+    await expect(
+      firstValueFrom(
+        service.streamMessage([{ role: 'user', content: 'Hello there.' }]),
+      ),
+    ).rejects.toThrow('The reply failed.');
+    vi.unstubAllGlobals();
   });
 });

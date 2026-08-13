@@ -8,11 +8,13 @@ import { ChatPageComponent } from '@speak-flow/chat-feature';
 describe('ChatPageComponent', () => {
   const chatService = {
     sendMessage: vi.fn(),
+    streamMessage: vi.fn(),
     loadHistory: vi.fn(),
   };
 
   beforeEach(async () => {
     chatService.sendMessage.mockReset();
+    chatService.streamMessage.mockReset();
     chatService.loadHistory.mockReset();
     chatService.loadHistory.mockReturnValue(of([]));
     await TestBed.configureTestingModule({
@@ -31,8 +33,12 @@ describe('ChatPageComponent', () => {
   });
 
   it('sends a reply on Enter and appends the API response', () => {
-    chatService.sendMessage.mockReturnValue(
-      of('That sounds good. What have you been up to?'),
+    chatService.streamMessage.mockReturnValue(
+      of(
+        { type: 'delta', text: 'That sounds good. ' },
+        { type: 'delta', text: 'What have you been up to?' },
+        { type: 'complete' },
+      ),
     );
     const fixture = TestBed.createComponent(ChatPageComponent);
     const component = fixture.componentInstance;
@@ -42,7 +48,7 @@ describe('ChatPageComponent', () => {
       new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }),
     );
 
-    expect(chatService.sendMessage).toHaveBeenCalledOnce();
+    expect(chatService.streamMessage).toHaveBeenCalledOnce();
     expect(component.messages().at(-2)?.text).toBe('I am doing well today.');
     expect(component.messages().at(-1)?.text).toBe(
       'That sounds good. What have you been up to?',
@@ -79,7 +85,7 @@ describe('ChatPageComponent', () => {
     fixture.componentInstance.onReplyKeydown(event);
 
     expect(event.defaultPrevented).toBe(false);
-    expect(chatService.sendMessage).not.toHaveBeenCalled();
+    expect(chatService.streamMessage).not.toHaveBeenCalled();
   });
 
   it('does not send Enter while an IME composition is active', () => {
@@ -92,13 +98,13 @@ describe('ChatPageComponent', () => {
       new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }),
     );
 
-    expect(chatService.sendMessage).not.toHaveBeenCalled();
+    expect(chatService.streamMessage).not.toHaveBeenCalled();
     expect(component.status()).toEqual({ state: 'idle' });
     component.onCompositionEnd();
   });
 
   it('ignores another submission while a reply is pending', () => {
-    chatService.sendMessage.mockReturnValue(new Subject<string>());
+    chatService.streamMessage.mockReturnValue(new Subject());
     const component =
       TestBed.createComponent(ChatPageComponent).componentInstance;
     component.draft.set('First message');
@@ -107,14 +113,14 @@ describe('ChatPageComponent', () => {
     component.draft.set('Second message');
     component.sendMessage();
 
-    expect(chatService.sendMessage).toHaveBeenCalledOnce();
+    expect(chatService.streamMessage).toHaveBeenCalledOnce();
     expect(
       component.messages().filter(({ role }) => role === 'user'),
     ).toHaveLength(1);
   });
 
   it('shows a recoverable error when the request fails', () => {
-    chatService.sendMessage.mockReturnValue(
+    chatService.streamMessage.mockReturnValue(
       throwError(() => new Error('Request failed')),
     );
     const component =

@@ -20,7 +20,9 @@ import { ChatStatus } from '@speak-flow/chat-models';
         [ngModel]="draft()"
         (ngModelChange)="draftChange.emit($event)"
         [disabled]="
-          status().state === 'sending' || status().state === 'loading'
+          status().state === 'sending' ||
+          status().state === 'streaming' ||
+          status().state === 'loading'
         "
         (compositionstart)="compositionStart.emit()"
         (compositionend)="compositionEnd.emit()"
@@ -33,6 +35,7 @@ import { ChatStatus } from '@speak-flow/chat-models';
         [disabled]="
           !draft().trim() ||
           status().state === 'sending' ||
+          status().state === 'streaming' ||
           status().state === 'loading'
         "
       >
@@ -41,7 +44,9 @@ import { ChatStatus } from '@speak-flow/chat-models';
             ? 'Loading...'
             : status().state === 'sending'
               ? 'Thinking...'
-              : 'Send'
+              : status().state === 'streaming'
+                ? 'Replying...'
+                : 'Send'
         }}
       </button>
     </form>

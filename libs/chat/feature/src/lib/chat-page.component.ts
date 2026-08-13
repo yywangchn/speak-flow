@@ -6,7 +6,12 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ChatMessage, ChatRole, ChatStatus } from '@speak-flow/chat-models';
+import {
+  ChatMessage,
+  ChatRole,
+  ChatStatus,
+  ChatStreamEvent,
+} from '@speak-flow/chat-models';
 import { ChatService } from '@speak-flow/chat-data-access';
 import {
   ChatMessageListComponent,
@@ -72,17 +77,26 @@ export class ChatPageComponent {
     this.draft.set('');
     this.status.set({ state: 'sending' });
     this.chatService
-      .sendMessage(
+      .streamMessage(
         nextMessages.map(({ role, text: content }) => ({ role, content })),
       )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (reply) => {
-          this.messages.update((messages) => [
-            ...messages,
-            this.createMessage('assistant', reply),
-          ]);
-          this.status.set({ state: 'idle' });
+        next: (event: ChatStreamEvent) => {
+          if (event.type === 'delta') {
+            this.messages.update((messages) => {
+              const lastMessage = messages.at(-1);
+              if (lastMessage?.role === 'assistant') {
+                return [
+                  ...messages.slice(0, -1),
+                  { ...lastMessage, text: lastMessage.text + event.text },
+                ];
+              }
+              return [...messages, this.createMessage('assistant', event.text)];
+            });
+            this.status.set({ state: 'streaming' });
+          }
+          if (event.type === 'complete') this.status.set({ state: 'idle' });
         },
         error: () =>
           this.status.set({
