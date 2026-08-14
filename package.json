@@ -6,6 +6,7 @@
     "start": "nx serve speak-flow --host 127.0.0.1 --port 4200",
     "db:migrate": "node --env-file-if-exists=.env --import tsx apps/speak-flow/src/database/migrate.ts",
     "db:import-sqlite": "node --env-file-if-exists=.env --import tsx tools/database/import-sqlite.ts",
+    "test:postgres": "RUN_POSTGRES_TESTS=true nx test speak-flow --skip-nx-cache",
     "eval:memory": "tsx tools/evals/run-memory-extraction.ts",
     "eval:retrieval": "tsx tools/evals/run-memory-retrieval.ts"
   },
