@@ -2,6 +2,7 @@ import '@angular/compiler';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ReadableStream } from 'node:stream/web';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const testDirectory = mkdtempSync(join(tmpdir(), 'speak-flow-server-'));
@@ -13,6 +14,7 @@ process.env['DASHSCOPE_BASE_URL'] = 'https://embedding.example.com';
 let handleChat: (typeof import('./server'))['handleChat'];
 let handleChatStream: (typeof import('./server'))['handleChatStream'];
 let memoryStore: typeof import('./memory-store');
+let chatStore: typeof import('./chat-store');
 let deepSeekPrompt = '';
 
 beforeAll(async () => {
@@ -20,6 +22,7 @@ beforeAll(async () => {
   handleChat = serverModule.handleChat;
   handleChatStream = serverModule.handleChatStream;
   memoryStore = await import('./memory-store');
+  chatStore = await import('./chat-store');
 });
 
 afterAll(async () => {
@@ -193,5 +196,86 @@ describe('chat API memory retrieval', () => {
       { type: 'complete' },
     ]);
     expect(ended).toBe(true);
+  });
+
+  it('saves generated text when the client aborts a stream', async () => {
+    const userId = 'cancelled-stream-user';
+    const encoder = new TextEncoder();
+    let abortRequest: (() => void) | undefined;
+    let streamController:
+      | ReadableStreamDefaultController<Uint8Array>
+      | undefined;
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        streamController = controller;
+        controller.enqueue(
+          encoder.encode(
+            'data: {"choices":[{"delta":{"content":"Partial"}}]}\n\n',
+          ),
+        );
+      },
+    });
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input, init) => {
+        if (input.toString() === 'https://embedding.example.com/embeddings') {
+          return new Response(
+            JSON.stringify({ data: [{ index: 0, embedding: [1, 0] }] }),
+            { status: 200 },
+          );
+        }
+        const signal = init?.signal;
+        signal?.addEventListener('abort', () =>
+          streamController?.error(
+            new DOMException('Request aborted.', 'AbortError'),
+          ),
+        );
+        return new Response(body as unknown as BodyInit, { status: 200 });
+      });
+    const writtenEvents: string[] = [];
+    let ended = false;
+
+    const stream = handleChatStream(
+      {
+        body: {
+          userId,
+          messages: [{ role: 'user', content: 'Start a long reply.' }],
+        },
+        on(_event, listener) {
+          abortRequest = listener;
+        },
+      },
+      {
+        status() {
+          return this;
+        },
+        setHeader() {
+          return undefined;
+        },
+        write(event) {
+          writtenEvents.push(event);
+          if (writtenEvents.length === 1) abortRequest?.();
+          return true;
+        },
+        end() {
+          ended = true;
+          return undefined;
+        },
+      },
+    );
+
+    await stream;
+    fetchMock.mockRestore();
+
+    expect(writtenEvents.map((event) => JSON.parse(event))).toEqual([
+      { type: 'delta', text: 'Partial' },
+      { type: 'cancelled' },
+    ]);
+    expect(ended).toBe(true);
+    expect(chatStore.listRecentMessages(userId)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ role: 'assistant', content: 'Partial' }),
+      ]),
+    );
   });
 });

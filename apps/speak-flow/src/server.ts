@@ -41,6 +41,7 @@ type ChatRequest = {
     userId?: unknown;
     messages?: unknown;
   };
+  on?(event: 'aborted', listener: () => void): void;
 };
 
 type ChatResponse = {
@@ -187,6 +188,8 @@ export async function handleChatStream(
   const latestUserMessage = messages.at(-1)?.content ?? '';
   saveChatMessage(userId, 'user', latestUserMessage);
   const controller = new AbortController();
+  let reply = '';
+  req.on?.('aborted', () => controller.abort());
   const promptMessages = await buildPromptMessages(
     userId,
     latestUserMessage,
@@ -222,7 +225,6 @@ export async function handleChatStream(
       return;
     }
 
-    let reply = '';
     for await (const text of readDeepSeekStream(response.body)) {
       reply += text;
       writeStreamEvent(res, { type: 'delta', text });
@@ -243,6 +245,11 @@ export async function handleChatStream(
     );
     writeStreamEvent(res, { type: 'complete' });
   } catch (error: unknown) {
+    if (controller.signal.aborted) {
+      if (reply.trim()) saveChatMessage(userId, 'assistant', reply);
+      writeStreamEvent(res, { type: 'cancelled' });
+      return;
+    }
     console.error('DeepSeek stream failed:', error);
     writeStreamEvent(res, {
       type: 'error',
