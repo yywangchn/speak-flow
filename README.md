@@ -35,6 +35,25 @@ volume `postgres-data`. Stop the local database without deleting data:
 docker compose down
 ```
 
+### Import existing SQLite data
+
+Register the target account first. Then list the legacy browser identities and
+choose the one whose message and memory counts match your data:
+
+```sh
+npm run db:import-sqlite -- --list-users
+npm run db:import-sqlite -- --user-email you@example.com --legacy-user-id <id>
+```
+
+When the database contains exactly one registered account, its email does not
+need to appear in the command:
+
+```sh
+npm run db:import-sqlite -- --only-user --legacy-user-id <id>
+```
+
+The import is idempotent, so rerunning it does not duplicate records.
+
 <a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
 
 ✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.

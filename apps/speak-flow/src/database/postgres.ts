@@ -1,6 +1,7 @@
 import { Pool, type PoolConfig } from 'pg';
 
 export type PostgresPool = Pick<Pool, 'connect' | 'end' | 'query'>;
+let sharedPool: Pool | undefined;
 
 export function createPostgresPool(
   connectionString = process.env['DATABASE_URL'],
@@ -17,4 +18,8 @@ export function createPostgresPool(
     connectionTimeoutMillis: 5_000,
     ...overrides,
   });
+}
+
+export function getPostgresPool(): Pool {
+  return (sharedPool ??= createPostgresPool());
 }

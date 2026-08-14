@@ -5,20 +5,24 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import express from 'express';
+import type { RequestHandler } from 'express';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  MEMORY_EXTRACTION_SYSTEM_PROMPT,
+  parseExtractedMemories,
+} from './memory-extraction';
+import {
+  listRecentMessages,
+  saveChatMessage,
+} from './database/chat-persistence';
 import {
   deleteMemory,
   extractMemories,
   findRelevantMemories,
   listMemories,
   saveExtractedMemories,
-} from './memory-store';
-import {
-  MEMORY_EXTRACTION_SYSTEM_PROMPT,
-  parseExtractedMemories,
-} from './memory-extraction';
-import { listRecentMessages, saveChatMessage } from './chat-store';
+} from './database/memory-persistence';
 import { EMBEDDING_MODEL, requestEmbeddings } from './embedding-client';
 import {
   currentUser,
@@ -105,7 +109,7 @@ async function extractMemoriesWithAi(
   const embeddingApiKey = process.env['DASHSCOPE_API_KEY'];
   const embeddingBaseUrl = process.env['DASHSCOPE_BASE_URL'];
   if (!embeddingApiKey || !embeddingBaseUrl) {
-    saveExtractedMemories(userId, memories);
+    await saveExtractedMemories(userId, memories);
     return;
   }
 
@@ -118,7 +122,7 @@ async function extractMemoriesWithAi(
         signal: AbortSignal.timeout(15_000),
       },
     );
-    saveExtractedMemories(
+    await saveExtractedMemories(
       userId,
       memories,
       vectors.map((vector) => ({ vector, model: EMBEDDING_MODEL })),
@@ -126,7 +130,7 @@ async function extractMemoriesWithAi(
   } catch (error: unknown) {
     // Embedding is an enhancement; text memory must still survive an API failure.
     console.error('Memory embedding failed:', error);
-    saveExtractedMemories(userId, memories);
+    await saveExtractedMemories(userId, memories);
   }
 }
 
@@ -154,39 +158,64 @@ app.use(
     void requireAuth(req as AuthenticatedRequest, res, next).catch(next),
 );
 
-app.get('/api/chat/history', (req, res) => {
-  const userId = (req as AuthenticatedRequest).userId;
-  if (!userId) {
-    res.status(401).json({ error: 'Authentication required.' });
-    return;
-  }
-  res.json({ messages: listRecentMessages(userId) });
-});
+const asyncRoute =
+  (
+    handler: (
+      req: AuthenticatedRequest,
+      res: Parameters<RequestHandler>[1],
+    ) => Promise<void>,
+  ): RequestHandler =>
+  (req, res, next) =>
+    void handler(req as AuthenticatedRequest, res).catch(next);
 
-app.get('/api/memories', (req, res) => {
-  const userId = (req as AuthenticatedRequest).userId;
-  if (!userId) {
-    res.status(401).json({ error: 'Authentication required.' });
-    return;
-  }
-  res.json(listMemories(userId));
-});
+app.get(
+  '/api/chat/history',
+  asyncRoute(async (req, res) => {
+    const userId = (req as AuthenticatedRequest).userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Authentication required.' });
+      return;
+    }
+    res.json({ messages: await listRecentMessages(userId) });
+  }),
+);
 
-app.delete('/api/memories/:id', (req, res) => {
-  const userId = (req as AuthenticatedRequest).userId;
-  if (!userId) {
-    res.status(401).json({ error: 'Authentication required.' });
-    return;
-  }
-  if (!deleteMemory(userId, req.params['id'])) {
-    res.status(404).json({ error: 'Memory not found.' });
-    return;
-  }
-  res.status(204).send();
-});
+app.get(
+  '/api/memories',
+  asyncRoute(async (req, res) => {
+    const userId = (req as AuthenticatedRequest).userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Authentication required.' });
+      return;
+    }
+    res.json(await listMemories(userId));
+  }),
+);
 
-app.post('/api/chat', (req, res) => void handleChat(req, res));
-app.post('/api/chat/stream', (req, res) => void handleChatStream(req, res));
+app.delete(
+  '/api/memories/:id',
+  asyncRoute(async (req, res) => {
+    const userId = (req as AuthenticatedRequest).userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Authentication required.' });
+      return;
+    }
+    if (!(await deleteMemory(userId, req.params['id']))) {
+      res.status(404).json({ error: 'Memory not found.' });
+      return;
+    }
+    res.status(204).send();
+  }),
+);
+
+app.post(
+  '/api/chat',
+  (req, res, next) => void handleChat(req, res).catch(next),
+);
+app.post(
+  '/api/chat/stream',
+  (req, res, next) => void handleChatStream(req, res).catch(next),
+);
 
 export async function handleChatStream(
   req: ChatRequest,
@@ -211,7 +240,7 @@ export async function handleChatStream(
   }
 
   const latestUserMessage = messages.at(-1)?.content ?? '';
-  saveChatMessage(userId, 'user', latestUserMessage);
+  await saveChatMessage(userId, 'user', latestUserMessage);
   const controller = new AbortController();
   let reply = '';
   req.on?.('aborted', () => controller.abort());
@@ -261,17 +290,17 @@ export async function handleChatStream(
       });
       return;
     }
-    saveChatMessage(userId, 'assistant', reply);
+    await saveChatMessage(userId, 'assistant', reply);
     void extractMemoriesWithAi(apiKey, userId, latestUserMessage).catch(
       (error: unknown) => {
         console.error('Memory extraction failed:', error);
-        extractMemories(userId, latestUserMessage);
+        void extractMemories(userId, latestUserMessage).catch(console.error);
       },
     );
     writeStreamEvent(res, { type: 'complete' });
   } catch (error: unknown) {
     if (controller.signal.aborted) {
-      if (reply.trim()) saveChatMessage(userId, 'assistant', reply);
+      if (reply.trim()) await saveChatMessage(userId, 'assistant', reply);
       writeStreamEvent(res, { type: 'cancelled' });
       return;
     }
@@ -307,7 +336,7 @@ async function buildPromptMessages(
   latestUserMessage: string,
   messages: readonly ChatMessage[],
 ): Promise<Array<{ role: 'system' | ChatMessage['role']; content: string }>> {
-  let memories = listMemories(userId);
+  let memories = await listMemories(userId);
   const storedMemoryCount = memories.length;
   const embeddingApiKey = process.env['DASHSCOPE_API_KEY'];
   const embeddingBaseUrl = process.env['DASHSCOPE_BASE_URL'];
@@ -319,7 +348,7 @@ async function buildPromptMessages(
         signal: AbortSignal.timeout(15_000),
       });
       if (queryVector) {
-        const relevantMemories = findRelevantMemories(
+        const relevantMemories = await findRelevantMemories(
           userId,
           queryVector,
           MEMORY_RETRIEVAL_OPTIONS,
@@ -418,7 +447,7 @@ export async function handleChat(
 
   try {
     const latestUserMessage = messages.at(-1)?.content ?? '';
-    saveChatMessage(userId, 'user', latestUserMessage);
+    await saveChatMessage(userId, 'user', latestUserMessage);
     if (!apiKey) {
       res.status(503).json({ error: 'DeepSeek API key is not configured.' });
       return;
@@ -461,11 +490,11 @@ export async function handleChat(
       return;
     }
 
-    saveChatMessage(userId, 'assistant', reply);
+    await saveChatMessage(userId, 'assistant', reply);
     void extractMemoriesWithAi(apiKey, userId, latestUserMessage).catch(
       (error: unknown) => {
         console.error('Memory extraction failed:', error);
-        extractMemories(userId, latestUserMessage);
+        void extractMemories(userId, latestUserMessage).catch(console.error);
       },
     );
     res.json({ reply });

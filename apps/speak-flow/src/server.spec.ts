@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const testDirectory = mkdtempSync(join(tmpdir(), 'speak-flow-server-'));
 process.env['SPEAKFLOW_DATABASE_PATH'] = join(testDirectory, 'test.sqlite');
+process.env['SPEAKFLOW_PERSISTENCE'] = 'sqlite';
 process.env['DEEPSEEK_API_KEY'] = 'test-deepseek-key';
 process.env['DASHSCOPE_API_KEY'] = 'test-dashscope-key';
 process.env['DASHSCOPE_BASE_URL'] = 'https://embedding.example.com';
@@ -27,6 +28,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   delete process.env['SPEAKFLOW_DATABASE_PATH'];
+  delete process.env['SPEAKFLOW_PERSISTENCE'];
   delete process.env['DEEPSEEK_API_KEY'];
   delete process.env['DASHSCOPE_API_KEY'];
   delete process.env['DASHSCOPE_BASE_URL'];
