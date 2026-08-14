@@ -1,22 +1,45 @@
 # SpeakFlow
 
-## DeepSeek chat
+## Local development
 
-Set the server-side API key and start the development server:
+Create your local environment file from the template, then set the API keys:
 
 ```sh
-export DEEPSEEK_API_KEY="your_deepseek_api_key"
-npx nx serve speak-flow
+cp .env.example .env
 ```
 
-The browser calls the local `/api/chat` endpoint. Keep the API key on the
-server and never expose it in Angular configuration or client-side code.
+The browser calls local server endpoints. Keep API keys in `.env`; do not
+expose them in Angular configuration or client-side code.
+
+Start the application:
+
+```sh
+npm start
+```
+
+## PostgreSQL with pgvector
+
+PostgreSQL is prepared for the upcoming persistence migration. It is not used
+by the application yet; chat history and memories still use SQLite.
+
+```sh
+docker compose up -d postgres
+docker compose ps
+```
+
+The local database is available at `127.0.0.1:5432` and uses the development
+credentials documented in `.env.example`. Its data lives in the named Docker
+volume `postgres-data`. Stop the local database without deleting data:
+
+```sh
+docker compose down
+```
 
 <a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
 
 ✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/getting-started/tutorials/angular-monorepo-tutorial?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+[Learn more about this workspace setup and its capabilities](https://nx.dev/getting-started/tutorials/angular-monorepo-tutorial?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
 
 ## Run tasks
 
@@ -101,12 +124,13 @@ Nx Console is an editor extension that enriches your developer experience. It le
 
 Learn more:
 
-- [Learn more about this workspace setup](https://nx.dev/getting-started/tutorials/angular-monorepo-tutorial?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
+- [Learn more about this workspace setup](https://nx.dev/getting-started/tutorials/angular-monorepo-tutorial?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 - [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 - [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 - [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 
 And join the Nx community:
+
 - [Discord](https://go.nx.dev/community)
 - [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
 - [Our Youtube channel](https://www.youtube.com/@nxdevtools)
