@@ -2,7 +2,7 @@ import { Memory, MemoryCategory } from '@speak-flow/memory-models';
 import { EMBEDDING_MODEL } from '../embedding-client';
 import type { ExtractedMemory } from '../memory-extraction';
 import type { MemoryEmbedding, RelevantMemory } from '../memory-store';
-import { getPostgresPool } from './postgres';
+import { getPostgresPool, type PostgresPool } from './postgres';
 
 type MemoryRow = {
   id: string;
@@ -13,8 +13,8 @@ type MemoryRow = {
   confidence: number;
   created_at: Date;
   updated_at: Date;
-  embedding?: string | null;
 };
+type RelevantMemoryRow = MemoryRow & { similarity: number };
 
 export async function listPostgresMemories(userId: string): Promise<Memory[]> {
   const result = await getPostgresPool().query<MemoryRow>(
@@ -28,26 +28,26 @@ export async function findRelevantPostgresMemories(
   userId: string,
   queryVector: readonly number[],
   options: { limit?: number; minimumSimilarity?: number } = {},
+  database: Pick<PostgresPool, 'query'> = getPostgresPool(),
 ): Promise<RelevantMemory[]> {
   const limit = options.limit ?? 3;
   const minimumSimilarity = options.minimumSimilarity ?? 0.35;
   if (limit <= 0 || !Number.isFinite(limit)) return [];
-  const result = await getPostgresPool().query<MemoryRow>(
-    `SELECT *, embedding::text AS embedding FROM memories
-     WHERE user_id = $1 AND embedding IS NOT NULL AND embedding_model = $2`,
-    [userId, EMBEDDING_MODEL],
+  const vector = `[${queryVector.join(',')}]`;
+  const result = await database.query<RelevantMemoryRow>(
+    `SELECT id, user_id, content, category, source, confidence, created_at, updated_at,
+       1 - (embedding <=> $2::vector) AS similarity
+     FROM memories
+     WHERE user_id = $1 AND embedding IS NOT NULL AND embedding_model = $3
+       AND 1 - (embedding <=> $2::vector) >= $4
+     ORDER BY embedding <=> $2::vector
+     LIMIT $5`,
+    [userId, vector, EMBEDDING_MODEL, minimumSimilarity, Math.floor(limit)],
   );
-  return result.rows
-    .flatMap((row) => {
-      const vector = parseVector(row.embedding);
-      if (!vector || vector.length !== queryVector.length) return [];
-      const similarity = cosineSimilarity(queryVector, vector);
-      return similarity >= minimumSimilarity
-        ? [{ ...toMemory(row), similarity }]
-        : [];
-    })
-    .sort((left, right) => right.similarity - left.similarity)
-    .slice(0, Math.floor(limit));
+  return result.rows.map((row) => ({
+    ...toMemory(row),
+    similarity: row.similarity,
+  }));
 }
 
 export async function deletePostgresMemory(
@@ -130,26 +130,4 @@ function toMemory(row: MemoryRow): Memory {
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
-}
-
-function parseVector(value: string | null | undefined): number[] | null {
-  if (!value) return null;
-  const vector = value.slice(1, -1).split(',').map(Number);
-  return vector.length && vector.every(Number.isFinite) ? vector : null;
-}
-
-function cosineSimilarity(
-  left: readonly number[],
-  right: readonly number[],
-): number {
-  let dot = 0;
-  let leftNorm = 0;
-  let rightNorm = 0;
-  for (let index = 0; index < left.length; index += 1) {
-    dot += left[index] * right[index];
-    leftNorm += left[index] ** 2;
-    rightNorm += right[index] ** 2;
-  }
-  const denominator = Math.sqrt(leftNorm) * Math.sqrt(rightNorm);
-  return denominator ? dot / denominator : 0;
 }
