@@ -47,6 +47,9 @@ export class LoginPageComponent {
   submit(): void {
     if (this.form.invalid || this.submitting()) {
       this.form.markAllAsTouched();
+      this.error.set(
+        'Enter a valid email and a password of at least 8 characters.',
+      );
       return;
     }
     this.submitting.set(true);
