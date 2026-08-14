@@ -6,8 +6,18 @@ export type ChatMessage = {
   readonly text: string;
 };
 
+export type LearningSuggestion = {
+  readonly original: string;
+  readonly suggestion: string;
+  readonly explanation: string;
+};
+
 export type ChatStreamEvent =
   | { readonly type: 'delta'; readonly text: string }
+  | {
+      readonly type: 'feedback';
+      readonly suggestions: readonly LearningSuggestion[];
+    }
   | { readonly type: 'complete' }
   | { readonly type: 'error'; readonly message: string }
   | { readonly type: 'cancelled' };

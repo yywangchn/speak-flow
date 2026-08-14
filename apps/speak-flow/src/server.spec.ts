@@ -83,6 +83,16 @@ describe('chat API memory retrieval', () => {
             { status: 200 },
           );
         }
+        if (
+          body.messages?.[0]?.content?.includes('You help an English learner')
+        ) {
+          return new Response(
+            JSON.stringify({
+              choices: [{ message: { content: 'invalid feedback' } }],
+            }),
+            { status: 200 },
+          );
+        }
         return new Response(
           JSON.stringify({
             choices: [{ message: { content: '{"memories":[]}' } }],
@@ -92,6 +102,9 @@ describe('chat API memory retrieval', () => {
       });
     const infoMock = vi
       .spyOn(console, 'info')
+      .mockImplementation(() => undefined);
+    const warnMock = vi
+      .spyOn(console, 'warn')
       .mockImplementation(() => undefined);
 
     let status = 200;
@@ -121,9 +134,13 @@ describe('chat API memory retrieval', () => {
 
     fetchMock.mockRestore();
     infoMock.mockRestore();
+    warnMock.mockRestore();
 
     expect(status).toBe(200);
-    expect(responseBody).toEqual({ reply: 'Let us practice.' });
+    expect(responseBody).toEqual({
+      reply: 'Let us practice.',
+      suggestions: [],
+    });
     expect(deepSeekPrompt).toContain(
       'The user is preparing for a frontend interview.',
     );
@@ -141,10 +158,39 @@ describe('chat API memory retrieval', () => {
             { status: 200 },
           );
         }
-        const request = JSON.parse(String(init?.body)) as { stream?: boolean };
+        const request = JSON.parse(String(init?.body)) as {
+          stream?: boolean;
+          messages?: Array<{ content?: string }>;
+        };
         if (request.stream) {
           return new Response(
             'data: {"choices":[{"delta":{"content":"Hello"}}]}\n\ndata: {"choices":[{"delta":{"content":" there"}}]}\n\ndata: [DONE]\n\n',
+            { status: 200 },
+          );
+        }
+        if (
+          request.messages?.[0]?.content?.includes(
+            'You help an English learner',
+          )
+        ) {
+          return new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      suggestions: [
+                        {
+                          original: 'I very like it.',
+                          suggestion: 'I really like it.',
+                          explanation: 'Use really to modify like.',
+                        },
+                      ],
+                    }),
+                  },
+                },
+              ],
+            }),
             { status: 200 },
           );
         }
@@ -195,6 +241,16 @@ describe('chat API memory retrieval', () => {
     expect(writtenEvents.map((event) => JSON.parse(event))).toEqual([
       { type: 'delta', text: 'Hello' },
       { type: 'delta', text: ' there' },
+      {
+        type: 'feedback',
+        suggestions: [
+          {
+            original: 'I very like it.',
+            suggestion: 'I really like it.',
+            explanation: 'Use really to modify like.',
+          },
+        ],
+      },
       { type: 'complete' },
     ]);
     expect(ended).toBe(true);
@@ -223,6 +279,15 @@ describe('chat API memory retrieval', () => {
         if (input.toString() === 'https://embedding.example.com/embeddings') {
           return new Response(
             JSON.stringify({ data: [{ index: 0, embedding: [1, 0] }] }),
+            { status: 200 },
+          );
+        }
+        const request = JSON.parse(String(init?.body)) as { stream?: boolean };
+        if (!request.stream) {
+          return new Response(
+            JSON.stringify({
+              choices: [{ message: { content: '{"suggestions":[]}' } }],
+            }),
             { status: 200 },
           );
         }
