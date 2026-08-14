@@ -37,7 +37,10 @@ export class ChatService {
     );
   }
 
-  streamMessage(messages: readonly ChatMessage[]): Observable<ChatStreamEvent> {
+  streamMessage(
+    messages: readonly ChatMessage[],
+    includeFeedback = true,
+  ): Observable<ChatStreamEvent> {
     return new Observable<ChatStreamEvent>((subscriber) => {
       const controller = new AbortController();
       let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
@@ -45,7 +48,7 @@ export class ChatService {
       void fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify({ messages, includeFeedback }),
         signal: controller.signal,
       })
         .then(async (response) => {

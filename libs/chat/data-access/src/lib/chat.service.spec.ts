@@ -109,6 +109,7 @@ describe('ChatService', () => {
         method: 'POST',
         body: JSON.stringify({
           messages: [{ role: 'user', content: 'Hello there.' }],
+          includeFeedback: true,
         }),
       }),
     );

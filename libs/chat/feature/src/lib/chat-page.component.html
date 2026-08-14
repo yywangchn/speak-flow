@@ -8,7 +8,17 @@
           <span class="status">Online</span>
         </div>
       </div>
-      <button class="logout" type="button" (click)="logout()">Log out</button>
+      <div class="header-actions">
+        <label class="feedback-toggle">
+          <input
+            type="checkbox"
+            [checked]="learningFeedbackEnabled()"
+            (change)="onFeedbackToggle($event)"
+          />
+          <span>Tips</span>
+        </label>
+        <button class="logout" type="button" (click)="logout()">Log out</button>
+      </div>
     </div>
     <chat-message-list [messages]="messages()" />
     <chat-reply-form

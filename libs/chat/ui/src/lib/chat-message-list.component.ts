@@ -25,6 +25,20 @@ import { ChatMessage } from '@speak-flow/chat-models';
             message.role === 'user' ? 'You' : 'SpeakFlow'
           }}</span>
           <p>{{ message.text }}</p>
+          @if (message.suggestions?.length) {
+            <div class="suggestions" aria-label="English suggestions">
+              @for (
+                suggestion of message.suggestions;
+                track suggestion.original + suggestion.suggestion
+              ) {
+                <div class="suggestion">
+                  <span>{{ suggestion.original }}</span>
+                  <strong>{{ suggestion.suggestion }}</strong>
+                  <small>{{ suggestion.explanation }}</small>
+                </div>
+              }
+            </div>
+          }
         </div>
       }
     </div>
