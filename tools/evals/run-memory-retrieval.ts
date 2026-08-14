@@ -26,12 +26,19 @@ const apiKey = environment['DASHSCOPE_API_KEY'];
 const baseUrl = environment['DASHSCOPE_BASE_URL'];
 const thresholds = [0.25, AI_SETTINGS.memoryRetrieval.minimumSimilarity, 0.45];
 const topK = AI_SETTINGS.memoryRetrieval.topK;
+const qualityGate = {
+  minimumRecall: 0.9,
+  minimumPrecision: 0.8,
+  maximumEmptyRate: 0.4,
+} as const;
 
 if (!apiKey || !baseUrl) {
   throw new Error(
     'DASHSCOPE_API_KEY and DASHSCOPE_BASE_URL are required to run retrieval evaluation.',
   );
 }
+const embeddingApiKey = apiKey;
+const embeddingBaseUrl = baseUrl;
 
 void main().catch((error: unknown) => {
   console.error(error);
@@ -106,22 +113,37 @@ async function main(): Promise<void> {
       `${result.threshold.toFixed(2).padEnd(9)} | ${percentage(result.recall).padEnd(9)} | ${percentage(result.precision).padEnd(12)} | ${percentage(result.emptyRate)}`,
     );
   }
+  const productionResult = results.find(
+    ({ threshold }) =>
+      threshold === AI_SETTINGS.memoryRetrieval.minimumSimilarity,
+  );
+  if (!productionResult)
+    throw new Error('The production retrieval threshold was not evaluated.');
+  const qualityGatePassed =
+    productionResult.recall >= qualityGate.minimumRecall &&
+    productionResult.precision >= qualityGate.minimumPrecision &&
+    productionResult.emptyRate <= qualityGate.maximumEmptyRate;
+  console.log(`Quality gate: ${qualityGatePassed ? 'PASS' : 'FAIL'}`);
+  process.exitCode = qualityGatePassed ? 0 : 1;
 }
 
 async function requestEmbeddings(
   input: readonly string[],
 ): Promise<number[][]> {
-  const response = await fetch(`${baseUrl!.replace(/\/$/, '')}/embeddings`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
+  const response = await fetch(
+    `${embeddingBaseUrl.replace(/\/$/, '')}/embeddings`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${embeddingApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: AI_SETTINGS.memoryRetrieval.embeddingModel,
+        input,
+      }),
     },
-    body: JSON.stringify({
-      model: AI_SETTINGS.memoryRetrieval.embeddingModel,
-      input,
-    }),
-  });
+  );
   if (!response.ok) throw new Error(`DashScope returned ${response.status}`);
   const result = (await response.json()) as EmbeddingResponse;
   if (!Array.isArray(result.data) || result.data.length !== input.length) {

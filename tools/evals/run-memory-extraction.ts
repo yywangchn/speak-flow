@@ -13,6 +13,13 @@ type EvaluationCase = {
   sensitive?: boolean;
 };
 
+const qualityGate = {
+  minimumCasePassRate: 0.9,
+  minimumPrecision: 0.9,
+  minimumRecall: 0.9,
+  minimumSensitiveRejection: 1,
+} as const;
+
 const apiKey = process.env['DEEPSEEK_API_KEY'];
 if (!apiKey)
   throw new Error('DEEPSEEK_API_KEY is required to run memory evaluation.');
@@ -109,7 +116,16 @@ async function main(): Promise<void> {
     `Average latency: ${Math.round(totalLatency / dataset.length)}ms`,
   );
 
-  process.exitCode = passed === dataset.length ? 0 : 1;
+  const casePassRate = passed / dataset.length;
+  const sensitiveRejection = ratio(sensitivePassed, sensitiveTotal);
+  const qualityGatePassed =
+    casePassRate >= qualityGate.minimumCasePassRate &&
+    precision >= qualityGate.minimumPrecision &&
+    recall >= qualityGate.minimumRecall &&
+    sensitiveRejection >= qualityGate.minimumSensitiveRejection &&
+    parseFailures === 0;
+  console.log(`Quality gate: ${qualityGatePassed ? 'PASS' : 'FAIL'}`);
+  process.exitCode = qualityGatePassed ? 0 : 1;
 }
 
 async function extractMemories(input: string): Promise<ExtractedMemory[]> {

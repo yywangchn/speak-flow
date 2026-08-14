@@ -1,0 +1,19 @@
+[
+  {
+    "id": "daily-conversation",
+    "input": "I had a busy day at work, but I finished an important task."
+  },
+  {
+    "id": "english-practice",
+    "input": "I want to practice explaining my frontend project in English."
+  },
+  {
+    "id": "natural-correction",
+    "input": "I very like learning new technology."
+  },
+  {
+    "id": "cancel-after-first-token",
+    "input": "Tell me a detailed story about learning a new skill.",
+    "cancelAfterFirstToken": true
+  }
+]

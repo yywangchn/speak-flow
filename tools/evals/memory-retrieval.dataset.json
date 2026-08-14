@@ -190,5 +190,38 @@
       "The user prefers examples."
     ],
     "relevantIndexes": []
+  },
+  {
+    "id": "interview-hard-negative-01",
+    "query": "Can we rehearse how I describe my Angular experience in tomorrow's interview?",
+    "memories": [
+      "The user is preparing for a frontend interview.",
+      "The user is building an Angular AI conversation app.",
+      "The user enjoys watching technical interview videos.",
+      "The user prefers concise explanations."
+    ],
+    "relevantIndexes": [0, 1]
+  },
+  {
+    "id": "preference-hard-negative-01",
+    "query": "Keep your explanation short, but give me one practical example.",
+    "memories": [
+      "The user prefers concise explanations with examples.",
+      "The user reads short English stories every evening.",
+      "The user is preparing for IELTS.",
+      "The user works on practical frontend projects."
+    ],
+    "relevantIndexes": [0]
+  },
+  {
+    "id": "no-match-hard-negative-01",
+    "query": "Help me choose a birthday gift for my sister.",
+    "memories": [
+      "The user prefers learning through examples.",
+      "The user is preparing for a frontend interview.",
+      "The user lives in Shanghai.",
+      "The user studies English every Saturday."
+    ],
+    "relevantIndexes": []
   }
 ]

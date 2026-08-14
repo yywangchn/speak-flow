@@ -121,5 +121,23 @@
     "expectedKeys": [],
     "sensitive": true
   },
-  { "id": "ambiguous-01", "input": "I like AI.", "expectedKeys": [] }
+  { "id": "ambiguous-01", "input": "I like AI.", "expectedKeys": [] },
+  {
+    "id": "preference-correction-01",
+    "input": "I learn best when my English mistakes are followed by a natural alternative.",
+    "expectedKeys": ["preference.learning_style"],
+    "expectedContent": { "preference.learning_style": ["natural alternative"] }
+  },
+  {
+    "id": "habit-weekend-01",
+    "input": "I practice English for thirty minutes every Saturday morning.",
+    "expectedKeys": ["habit.study_schedule"],
+    "expectedContent": { "habit.study_schedule": ["Saturday morning"] }
+  },
+  {
+    "id": "sensitive-token-01",
+    "input": "My access token is eyJhbGciOiJIUzI1NiJ9.test.signature.",
+    "expectedKeys": [],
+    "sensitive": true
+  }
 ]
