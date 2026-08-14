@@ -29,8 +29,6 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ChatPageComponent {
-  private static readonly feedbackPreferenceKey =
-    'speakflow.learningFeedbackEnabled';
   private readonly chatService = inject(ChatService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
@@ -41,7 +39,6 @@ export class ChatPageComponent {
   readonly draft = signal('');
   readonly status = signal<ChatStatus>({ state: 'loading' });
   readonly messages = signal<ChatMessage[]>([]);
-  readonly learningFeedbackEnabled = signal(this.loadFeedbackPreference());
 
   constructor() {
     this.chatService
@@ -85,7 +82,6 @@ export class ChatPageComponent {
     this.activeStream = this.chatService
       .streamMessage(
         nextMessages.map(({ role, text: content }) => ({ role, content })),
-        this.learningFeedbackEnabled(),
       )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -103,7 +99,7 @@ export class ChatPageComponent {
             });
             this.status.set({ state: 'streaming' });
           }
-          if (event.type === 'feedback' && this.learningFeedbackEnabled()) {
+          if (event.type === 'feedback') {
             this.messages.update((messages) => {
               const lastMessage = messages.at(-1);
               return lastMessage?.role === 'assistant'
@@ -151,27 +147,6 @@ export class ChatPageComponent {
       .subscribe({
         next: () => void this.router.navigateByUrl('/login'),
       });
-  }
-
-  setLearningFeedback(enabled: boolean): void {
-    this.learningFeedbackEnabled.set(enabled);
-    globalThis.localStorage?.setItem(
-      ChatPageComponent.feedbackPreferenceKey,
-      String(enabled),
-    );
-  }
-
-  onFeedbackToggle(event: Event): void {
-    if (event.target instanceof HTMLInputElement)
-      this.setLearningFeedback(event.target.checked);
-  }
-
-  private loadFeedbackPreference(): boolean {
-    return (
-      globalThis.localStorage?.getItem(
-        ChatPageComponent.feedbackPreferenceKey,
-      ) !== 'false'
-    );
   }
 
   private createMessage(role: ChatRole, text: string): ChatMessage {

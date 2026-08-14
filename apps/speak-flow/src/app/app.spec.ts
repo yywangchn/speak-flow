@@ -15,7 +15,6 @@ describe('ChatPageComponent', () => {
   };
 
   beforeEach(async () => {
-    localStorage.clear();
     chatService.sendMessage.mockReset();
     chatService.streamMessage.mockReset();
     chatService.loadHistory.mockReset();
@@ -185,29 +184,5 @@ describe('ChatPageComponent', () => {
       '[aria-label="English suggestions"]',
     ) as HTMLElement | null;
     expect(suggestion?.textContent).toContain('I really like it.');
-  });
-
-  it('passes the disabled feedback preference to the stream request', () => {
-    chatService.streamMessage.mockReturnValue(of({ type: 'complete' }));
-    const component =
-      TestBed.createComponent(ChatPageComponent).componentInstance;
-    component.setLearningFeedback(false);
-    component.draft.set('Hello');
-
-    component.sendMessage();
-
-    expect(chatService.streamMessage).toHaveBeenCalledWith(
-      expect.any(Array),
-      false,
-    );
-  });
-
-  it('restores the feedback preference from local storage', () => {
-    localStorage.setItem('speakflow.learningFeedbackEnabled', 'false');
-
-    const component =
-      TestBed.createComponent(ChatPageComponent).componentInstance;
-
-    expect(component.learningFeedbackEnabled()).toBe(false);
   });
 });

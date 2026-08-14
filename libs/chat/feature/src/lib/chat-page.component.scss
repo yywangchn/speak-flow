@@ -49,23 +49,6 @@ chat-reply-form {
   font: inherit;
   font-size: 0.78rem;
 }
-.header-actions,
-.feedback-toggle {
-  display: flex;
-  align-items: center;
-}
-.header-actions {
-  gap: 12px;
-}
-.feedback-toggle {
-  gap: 6px;
-  color: #647169;
-  cursor: pointer;
-  font-size: 0.78rem;
-}
-.feedback-toggle input {
-  accent-color: #1f6b52;
-}
 .logout:hover {
   color: #1f2a24;
 }

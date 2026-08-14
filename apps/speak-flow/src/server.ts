@@ -56,7 +56,6 @@ type ChatRequest = {
   userId?: string;
   body?: {
     messages?: unknown;
-    includeFeedback?: unknown;
   };
   on?(event: 'aborted', listener: () => void): void;
 };
@@ -319,17 +318,14 @@ export async function handleChatStream(
       return;
     }
 
-    const feedbackPromise =
-      req.body?.includeFeedback === false
-        ? Promise.resolve([])
-        : requestLearningFeedback(
-            apiKey,
-            latestUserMessage,
-            controller.signal,
-          ).catch((error: unknown) => {
-            console.warn('Learning feedback skipped:', error);
-            return [];
-          });
+    const feedbackPromise = requestLearningFeedback(
+      apiKey,
+      latestUserMessage,
+      controller.signal,
+    ).catch((error: unknown) => {
+      console.warn('Learning feedback skipped:', error);
+      return [];
+    });
 
     for await (const text of readDeepSeekStream(response.body)) {
       reply += text;
@@ -552,15 +548,13 @@ export async function handleChat(
         void extractMemories(userId, latestUserMessage).catch(console.error);
       },
     );
-    const suggestions =
-      req.body?.includeFeedback === false
-        ? []
-        : await requestLearningFeedback(apiKey, latestUserMessage).catch(
-            (error: unknown) => {
-              console.warn('Learning feedback skipped:', error);
-              return [];
-            },
-          );
+    const suggestions = await requestLearningFeedback(
+      apiKey,
+      latestUserMessage,
+    ).catch((error: unknown) => {
+      console.warn('Learning feedback skipped:', error);
+      return [];
+    });
     res.json({ reply, suggestions });
   } catch (error) {
     console.error('DeepSeek request failed:', error);
