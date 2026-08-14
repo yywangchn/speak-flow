@@ -25,18 +25,16 @@ export class ChatService {
   private readonly http = inject(HttpClient);
 
   sendMessage(messages: readonly ChatMessage[]): Observable<string> {
-    return this.http
-      .post<ChatResponse>('/api/chat', { messages, userId: this.getUserId() })
-      .pipe(
-        timeout({ first: 35_000 }),
-        map(({ reply }) => {
-          const text = reply?.trim();
-          if (!text) {
-            throw new Error('Chat API returned an empty reply.');
-          }
-          return text;
-        }),
-      );
+    return this.http.post<ChatResponse>('/api/chat', { messages }).pipe(
+      timeout({ first: 35_000 }),
+      map(({ reply }) => {
+        const text = reply?.trim();
+        if (!text) {
+          throw new Error('Chat API returned an empty reply.');
+        }
+        return text;
+      }),
+    );
   }
 
   streamMessage(messages: readonly ChatMessage[]): Observable<ChatStreamEvent> {
@@ -47,7 +45,7 @@ export class ChatService {
       void fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages, userId: this.getUserId() }),
+        body: JSON.stringify({ messages }),
         signal: controller.signal,
       })
         .then(async (response) => {
@@ -89,18 +87,11 @@ export class ChatService {
 
   loadHistory(): Observable<readonly ChatHistoryMessage[]> {
     return this.http
-      .get<ChatHistoryResponse>('/api/chat/history', {
-        params: { userId: this.getUserId() },
-      })
+      .get<ChatHistoryResponse>('/api/chat/history')
       .pipe(map(({ messages }) => messages));
   }
 
-  private getUserId(): string {
-    const storageKey = 'speakflow.userId';
-    const existing = globalThis.localStorage?.getItem(storageKey);
-    if (existing) return existing;
-    const userId = globalThis.crypto.randomUUID();
-    globalThis.localStorage?.setItem(storageKey, userId);
-    return userId;
+  logout(): Observable<void> {
+    return this.http.post<void>('/api/auth/logout', null);
   }
 }

@@ -20,6 +20,14 @@ import {
 } from './memory-extraction';
 import { listRecentMessages, saveChatMessage } from './chat-store';
 import { EMBEDDING_MODEL, requestEmbeddings } from './embedding-client';
+import {
+  currentUser,
+  login,
+  logout,
+  register,
+  requireAuth,
+  type AuthenticatedRequest,
+} from './auth-http';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
@@ -37,8 +45,8 @@ type ChatMessage = {
 };
 
 type ChatRequest = {
+  userId?: string;
   body?: {
-    userId?: unknown;
     messages?: unknown;
   };
   on?(event: 'aborted', listener: () => void): void;
@@ -58,11 +66,6 @@ type ChatStreamResponse = {
 
 const CHAT_SYSTEM_PROMPT =
   'You are SpeakFlow, a warm English conversation partner. Help the user practice natural spoken English. Reply in English in no more than 80 words, gently model better phrasing when useful, and ask exactly one relevant follow-up question. Do not use markdown unless the user asks for it.';
-
-const getUserId = (value: unknown): string | null =>
-  typeof value === 'string' && /^[a-zA-Z0-9-]{1,100}$/.test(value)
-    ? value
-    : null;
 
 async function extractMemoriesWithAi(
   apiKey: string,
@@ -129,28 +132,50 @@ async function extractMemoriesWithAi(
 
 app.use(express.json({ limit: '32kb' }));
 
+app.post(
+  '/api/auth/register',
+  (req, res, next) => void register(req, res).catch(next),
+);
+app.post(
+  '/api/auth/login',
+  (req, res, next) => void login(req, res).catch(next),
+);
+app.post(
+  '/api/auth/logout',
+  (req, res, next) => void logout(req, res).catch(next),
+);
+app.get(
+  '/api/auth/me',
+  (req, res, next) => void currentUser(req, res).catch(next),
+);
+app.use(
+  ['/api/chat', '/api/memories'],
+  (req, res, next) =>
+    void requireAuth(req as AuthenticatedRequest, res, next).catch(next),
+);
+
 app.get('/api/chat/history', (req, res) => {
-  const userId = getUserId(req.query['userId']);
+  const userId = (req as AuthenticatedRequest).userId;
   if (!userId) {
-    res.status(400).json({ error: 'A valid userId is required.' });
+    res.status(401).json({ error: 'Authentication required.' });
     return;
   }
   res.json({ messages: listRecentMessages(userId) });
 });
 
 app.get('/api/memories', (req, res) => {
-  const userId = getUserId(req.query['userId']);
+  const userId = (req as AuthenticatedRequest).userId;
   if (!userId) {
-    res.status(400).json({ error: 'A valid userId is required.' });
+    res.status(401).json({ error: 'Authentication required.' });
     return;
   }
   res.json(listMemories(userId));
 });
 
 app.delete('/api/memories/:id', (req, res) => {
-  const userId = getUserId(req.query['userId']);
+  const userId = (req as AuthenticatedRequest).userId;
   if (!userId) {
-    res.status(400).json({ error: 'A valid userId is required.' });
+    res.status(401).json({ error: 'Authentication required.' });
     return;
   }
   if (!deleteMemory(userId, req.params['id'])) {
@@ -168,7 +193,7 @@ export async function handleChatStream(
   res: ChatStreamResponse,
 ): Promise<void> {
   const apiKey = process.env['DEEPSEEK_API_KEY'];
-  const userId = getUserId(req.body?.userId);
+  const userId = req.userId;
   const messages = getChatMessages(req.body?.messages);
   if (!userId || !messages.length || messages.at(-1)?.role !== 'user') {
     writeStreamEvent(res.status(400), {
@@ -378,9 +403,9 @@ export async function handleChat(
   res: ChatResponse,
 ): Promise<void> {
   const apiKey = process.env['DEEPSEEK_API_KEY'];
-  const userId = getUserId(req.body?.userId);
+  const userId = req.userId;
   if (!userId) {
-    res.status(400).json({ error: 'A valid userId is required.' });
+    res.status(401).json({ error: 'Authentication required.' });
     return;
   }
 

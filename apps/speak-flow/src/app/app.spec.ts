@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { ChatService } from '@speak-flow/chat-data-access';
 import { of, Subject, throwError } from 'rxjs';
 // The route lazy-loads this feature; the app-level tests need the component directly.
@@ -10,16 +11,21 @@ describe('ChatPageComponent', () => {
     sendMessage: vi.fn(),
     streamMessage: vi.fn(),
     loadHistory: vi.fn(),
+    logout: vi.fn(),
   };
 
   beforeEach(async () => {
     chatService.sendMessage.mockReset();
     chatService.streamMessage.mockReset();
     chatService.loadHistory.mockReset();
+    chatService.logout.mockReset();
     chatService.loadHistory.mockReturnValue(of([]));
     await TestBed.configureTestingModule({
       imports: [ChatPageComponent],
-      providers: [{ provide: ChatService, useValue: chatService }],
+      providers: [
+        { provide: ChatService, useValue: chatService },
+        provideRouter([]),
+      ],
     }).compileComponents();
   });
 

@@ -32,23 +32,18 @@ describe('ChatService', () => {
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toEqual({
       messages: [{ role: 'user', content: 'Hello there.' }],
-      userId: expect.any(String),
     });
     request.flush({ reply: '  Hey! How are you?  ' });
 
     expect(reply).toBe('Hey! How are you?');
   });
 
-  it('loads recent messages for the anonymous user', () => {
+  it('loads recent messages for the authenticated user', () => {
     let messages: readonly { id: string; role: string; content: string }[] = [];
 
     service.loadHistory().subscribe((value) => (messages = value));
 
-    const request = http.expectOne(
-      (candidate) =>
-        candidate.url === '/api/chat/history' &&
-        typeof candidate.params.get('userId') === 'string',
-    );
+    const request = http.expectOne('/api/chat/history');
     request.flush({
       messages: [
         { id: 'saved-1', role: 'assistant', content: 'Welcome back!' },
@@ -110,7 +105,12 @@ describe('ChatService', () => {
     ]);
     expect(fetch).toHaveBeenCalledWith(
       '/api/chat/stream',
-      expect.objectContaining({ method: 'POST' }),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: 'Hello there.' }],
+        }),
+      }),
     );
     vi.unstubAllGlobals();
   });
@@ -131,5 +131,13 @@ describe('ChatService', () => {
       ),
     ).rejects.toThrow('The reply failed.');
     vi.unstubAllGlobals();
+  });
+
+  it('logs out through the server session endpoint', () => {
+    service.logout().subscribe();
+
+    const request = http.expectOne('/api/auth/logout');
+    expect(request.request.method).toBe('POST');
+    request.flush(null);
   });
 });

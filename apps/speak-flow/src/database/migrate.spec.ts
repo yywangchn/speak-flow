@@ -3,15 +3,19 @@ import type { PostgresPool } from './postgres';
 import { loadMigrations, runMigrations } from './migrate';
 
 describe('PostgreSQL migrations', () => {
-  it('loads the initial pgvector schema', async () => {
+  it('loads the ordered database schema', async () => {
     const migrations = await loadMigrations();
 
-    expect(migrations.map(({ name }) => name)).toEqual(['001_initial.sql']);
+    expect(migrations.map(({ name }) => name)).toEqual([
+      '001_initial.sql',
+      '002_auth_sessions.sql',
+    ]);
     expect(migrations[0]?.sql).toContain(
       'CREATE EXTENSION IF NOT EXISTS vector',
     );
     expect(migrations[0]?.sql).toContain('embedding VECTOR(1024)');
     expect(migrations[0]?.sql).toContain('USING hnsw');
+    expect(migrations[1]?.sql).toContain('CREATE TABLE auth_sessions');
   });
 
   it('applies pending migrations in a transaction', async () => {

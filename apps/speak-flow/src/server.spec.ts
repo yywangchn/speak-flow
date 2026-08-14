@@ -96,8 +96,8 @@ describe('chat API memory retrieval', () => {
     let responseBody: unknown;
     await handleChat(
       {
+        userId,
         body: {
-          userId,
           messages: [
             {
               role: 'user',
@@ -162,8 +162,8 @@ describe('chat API memory retrieval', () => {
 
     await handleChatStream(
       {
+        userId,
         body: {
-          userId,
           messages: [{ role: 'user', content: 'Say hello.' }],
         },
       },
@@ -237,8 +237,8 @@ describe('chat API memory retrieval', () => {
 
     const stream = handleChatStream(
       {
+        userId,
         body: {
-          userId,
           messages: [{ role: 'user', content: 'Start a long reply.' }],
         },
         on(_event, listener) {

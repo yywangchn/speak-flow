@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
+import { Router } from '@angular/router';
 import {
   ChatMessage,
   ChatRole,
@@ -30,6 +31,7 @@ import {
 export class ChatPageComponent {
   private readonly chatService = inject(ChatService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly router = inject(Router);
   private isComposing = false;
   private nextMessageId = 0;
   private activeStream?: Subscription;
@@ -125,6 +127,15 @@ export class ChatPageComponent {
   }
   onCompositionEnd(): void {
     this.isComposing = false;
+  }
+
+  logout(): void {
+    this.chatService
+      .logout()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => void this.router.navigateByUrl('/login'),
+      });
   }
 
   private createMessage(role: ChatRole, text: string): ChatMessage {

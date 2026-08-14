@@ -1,0 +1,54 @@
+<main class="auth-shell">
+  <section class="auth-panel" aria-labelledby="auth-title">
+    <p class="brand">SpeakFlow</p>
+    <h1 id="auth-title">
+      {{ mode() === 'login' ? 'Welcome back' : 'Create your account' }}
+    </h1>
+    <div class="mode-switch" aria-label="Authentication mode">
+      <button
+        type="button"
+        [class.active]="mode() === 'login'"
+        (click)="setMode('login')"
+      >
+        Log in
+      </button>
+      <button
+        type="button"
+        [class.active]="mode() === 'register'"
+        (click)="setMode('register')"
+      >
+        Sign up
+      </button>
+    </div>
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <label for="email">Email</label>
+      <input
+        id="email"
+        type="email"
+        formControlName="email"
+        autocomplete="email"
+      />
+      <label for="password">Password</label>
+      <input
+        id="password"
+        type="password"
+        formControlName="password"
+        [autocomplete]="
+          mode() === 'login' ? 'current-password' : 'new-password'
+        "
+      />
+      @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+      }
+      <button class="submit" type="submit" [disabled]="submitting()">
+        {{
+          submitting()
+            ? 'Please wait...'
+            : mode() === 'login'
+              ? 'Log in'
+              : 'Create account'
+        }}
+      </button>
+    </form>
+  </section>
+</main>
