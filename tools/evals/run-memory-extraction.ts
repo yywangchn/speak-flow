@@ -1,9 +1,9 @@
 import dataset from './memory-extraction.dataset.json';
 import {
   type ExtractedMemory,
-  MEMORY_EXTRACTION_SYSTEM_PROMPT,
   parseExtractedMemories,
 } from '../../apps/speak-flow/src/memory-extraction';
+import { AI_SETTINGS } from '../../apps/speak-flow/src/ai-settings';
 
 type EvaluationCase = {
   id: string;
@@ -23,6 +23,9 @@ void main().catch((error: unknown) => {
 });
 
 async function main(): Promise<void> {
+  console.log(
+    `AI settings: ${AI_SETTINGS.version} (${AI_SETTINGS.memoryExtraction.version})`,
+  );
   let truePositives = 0;
   let falsePositives = 0;
   let falseNegatives = 0;
@@ -117,11 +120,14 @@ async function extractMemories(input: string): Promise<ExtractedMemory[]> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'deepseek-chat',
-      temperature: 0,
+      model: AI_SETTINGS.memoryExtraction.model,
+      temperature: AI_SETTINGS.memoryExtraction.temperature,
       stream: false,
       messages: [
-        { role: 'system', content: MEMORY_EXTRACTION_SYSTEM_PROMPT },
+        {
+          role: 'system',
+          content: AI_SETTINGS.memoryExtraction.systemPrompt,
+        },
         { role: 'user', content: input },
       ],
     }),

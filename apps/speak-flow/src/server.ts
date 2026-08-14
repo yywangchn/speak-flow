@@ -8,10 +8,7 @@ import express from 'express';
 import type { RequestHandler } from 'express';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  MEMORY_EXTRACTION_SYSTEM_PROMPT,
-  parseExtractedMemories,
-} from './memory-extraction';
+import { parseExtractedMemories } from './memory-extraction';
 import {
   listRecentMessages,
   saveChatMessage,
@@ -24,10 +21,8 @@ import {
   saveExtractedMemories,
 } from './database/memory-persistence';
 import { EMBEDDING_MODEL, requestEmbeddings } from './embedding-client';
-import {
-  LEARNING_FEEDBACK_SYSTEM_PROMPT,
-  parseLearningFeedback,
-} from './learning-feedback';
+import { parseLearningFeedback } from './learning-feedback';
+import { AI_SETTINGS } from './ai-settings';
 import {
   currentUser,
   login,
@@ -40,8 +35,8 @@ import {
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
 const MEMORY_RETRIEVAL_OPTIONS = {
-  limit: 3,
-  minimumSimilarity: 0.35,
+  limit: AI_SETTINGS.memoryRetrieval.topK,
+  minimumSimilarity: AI_SETTINGS.memoryRetrieval.minimumSimilarity,
 } as const;
 
 export const app = express();
@@ -72,9 +67,6 @@ type ChatStreamResponse = {
   end(): void;
 };
 
-const CHAT_SYSTEM_PROMPT =
-  'You are SpeakFlow, a warm English conversation partner. Help the user practice natural spoken English. Reply in English in no more than 80 words, gently model better phrasing when useful, and ask exactly one relevant follow-up question. Do not use markdown unless the user asks for it.';
-
 async function extractMemoriesWithAi(
   apiKey: string,
   userId: string,
@@ -87,13 +79,13 @@ async function extractMemoriesWithAi(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'deepseek-chat',
-      temperature: 0,
+      model: AI_SETTINGS.memoryExtraction.model,
+      temperature: AI_SETTINGS.memoryExtraction.temperature,
       stream: false,
       messages: [
         {
           role: 'system',
-          content: MEMORY_EXTRACTION_SYSTEM_PROMPT,
+          content: AI_SETTINGS.memoryExtraction.systemPrompt,
         },
         { role: 'user', content: text },
       ],
@@ -151,12 +143,15 @@ async function requestLearningFeedback(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'deepseek-chat',
-      temperature: 0,
+      model: AI_SETTINGS.learningFeedback.model,
+      temperature: AI_SETTINGS.learningFeedback.temperature,
       stream: false,
       response_format: { type: 'json_object' },
       messages: [
-        { role: 'system', content: LEARNING_FEEDBACK_SYSTEM_PROMPT },
+        {
+          role: 'system',
+          content: AI_SETTINGS.learningFeedback.systemPrompt,
+        },
         { role: 'user', content: userMessage },
       ],
     }),
@@ -300,9 +295,9 @@ export async function handleChatStream(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: AI_SETTINGS.chat.model,
         stream: true,
-        temperature: 0.8,
+        temperature: AI_SETTINGS.chat.temperature,
         max_tokens: 180,
         messages: promptMessages,
       }),
@@ -437,7 +432,10 @@ async function buildPromptMessages(
     ? `Known things about the user:\n${memories.map(({ content }) => `- ${content}`).join('\n')}`
     : 'No saved memories about the user yet.';
   return [
-    { role: 'system', content: `${CHAT_SYSTEM_PROMPT}\n\n${memoryContext}` },
+    {
+      role: 'system',
+      content: `${AI_SETTINGS.chat.systemPrompt}\n\n${memoryContext}`,
+    },
     ...messages,
   ];
 }
@@ -515,9 +513,9 @@ export async function handleChat(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: AI_SETTINGS.chat.model,
         stream: false,
-        temperature: 0.8,
+        temperature: AI_SETTINGS.chat.temperature,
         max_tokens: 180,
         messages: promptMessages,
       }),

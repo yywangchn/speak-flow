@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { Memory, MemoryCategory } from '@speak-flow/memory-models';
 import { ExtractedMemory } from './memory-extraction';
 import { EMBEDDING_MODEL, EmbeddingVector } from './embedding-client';
+import { AI_SETTINGS } from './ai-settings';
 
 export type MemoryEmbedding = {
   vector: EmbeddingVector;
@@ -81,8 +82,9 @@ export function findRelevantMemories(
   queryVector: readonly number[],
   options: { limit?: number; minimumSimilarity?: number } = {},
 ): RelevantMemory[] {
-  const limit = options.limit ?? 3;
-  const minimumSimilarity = options.minimumSimilarity ?? 0.35;
+  const limit = options.limit ?? AI_SETTINGS.memoryRetrieval.topK;
+  const minimumSimilarity =
+    options.minimumSimilarity ?? AI_SETTINGS.memoryRetrieval.minimumSimilarity;
   if (limit <= 0 || !Number.isFinite(limit)) return [];
 
   const rows = database

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import dataset from './memory-retrieval.dataset.json';
+import { AI_SETTINGS } from '../../apps/speak-flow/src/ai-settings';
 
 type RetrievalCase = {
   id: string;
@@ -23,8 +24,8 @@ type ThresholdResult = {
 const environment = loadEnvironmentFile();
 const apiKey = environment['DASHSCOPE_API_KEY'];
 const baseUrl = environment['DASHSCOPE_BASE_URL'];
-const thresholds = [0.25, 0.35, 0.45];
-const topK = 3;
+const thresholds = [0.25, AI_SETTINGS.memoryRetrieval.minimumSimilarity, 0.45];
+const topK = AI_SETTINGS.memoryRetrieval.topK;
 
 if (!apiKey || !baseUrl) {
   throw new Error(
@@ -38,6 +39,9 @@ void main().catch((error: unknown) => {
 });
 
 async function main(): Promise<void> {
+  console.log(
+    `AI settings: ${AI_SETTINGS.version} (${AI_SETTINGS.memoryRetrieval.version})`,
+  );
   const cases = dataset as RetrievalCase[];
   const vectorsByCase = new Map<string, number[][]>();
   for (const testCase of cases) {
@@ -113,7 +117,10 @@ async function requestEmbeddings(
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ model: 'text-embedding-v4', input }),
+    body: JSON.stringify({
+      model: AI_SETTINGS.memoryRetrieval.embeddingModel,
+      input,
+    }),
   });
   if (!response.ok) throw new Error(`DashScope returned ${response.status}`);
   const result = (await response.json()) as EmbeddingResponse;

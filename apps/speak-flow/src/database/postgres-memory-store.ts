@@ -3,6 +3,7 @@ import { EMBEDDING_MODEL } from '../embedding-client';
 import type { ExtractedMemory } from '../memory-extraction';
 import type { MemoryEmbedding, RelevantMemory } from '../memory-store';
 import { getPostgresPool, type PostgresPool } from './postgres';
+import { AI_SETTINGS } from '../ai-settings';
 
 type MemoryRow = {
   id: string;
@@ -30,8 +31,9 @@ export async function findRelevantPostgresMemories(
   options: { limit?: number; minimumSimilarity?: number } = {},
   database: Pick<PostgresPool, 'query'> = getPostgresPool(),
 ): Promise<RelevantMemory[]> {
-  const limit = options.limit ?? 3;
-  const minimumSimilarity = options.minimumSimilarity ?? 0.35;
+  const limit = options.limit ?? AI_SETTINGS.memoryRetrieval.topK;
+  const minimumSimilarity =
+    options.minimumSimilarity ?? AI_SETTINGS.memoryRetrieval.minimumSimilarity;
   if (limit <= 0 || !Number.isFinite(limit)) return [];
   const vector = `[${queryVector.join(',')}]`;
   const result = await database.query<RelevantMemoryRow>(

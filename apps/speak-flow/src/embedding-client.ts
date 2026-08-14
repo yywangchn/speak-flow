@@ -30,7 +30,7 @@ export async function requestEmbeddings(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'text-embedding-v4',
+      model: EMBEDDING_MODEL,
       input,
     }),
     signal: options.signal,
