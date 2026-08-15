@@ -21,7 +21,6 @@ import {
   saveExtractedMemories,
 } from './database/memory-persistence';
 import { EMBEDDING_MODEL, requestEmbeddings } from './embedding-client';
-import { parseLearningFeedback } from './learning-feedback';
 import { AI_SETTINGS } from './ai-settings';
 import {
   currentUser,
@@ -128,44 +127,6 @@ async function extractMemoriesWithAi(
     console.error('Memory embedding failed:', error);
     await saveExtractedMemories(userId, memories);
   }
-}
-
-async function requestLearningFeedback(
-  apiKey: string,
-  userMessage: string,
-  cancellationSignal?: AbortSignal,
-): Promise<import('@speak-flow/chat-models').LearningSuggestion[]> {
-  const timeoutSignal = AbortSignal.timeout(8_000);
-  const response = await fetch('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: AI_SETTINGS.learningFeedback.model,
-      temperature: AI_SETTINGS.learningFeedback.temperature,
-      stream: false,
-      response_format: { type: 'json_object' },
-      messages: [
-        {
-          role: 'system',
-          content: AI_SETTINGS.learningFeedback.systemPrompt,
-        },
-        { role: 'user', content: userMessage },
-      ],
-    }),
-    signal: cancellationSignal
-      ? AbortSignal.any([cancellationSignal, timeoutSignal])
-      : timeoutSignal,
-  });
-  if (!response.ok)
-    throw new Error(`Learning feedback failed with ${response.status}`);
-  const result = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const raw = result.choices?.[0]?.message?.content?.trim();
-  return raw ? parseLearningFeedback(raw) : [];
 }
 
 app.use(express.json({ limit: '32kb' }));
@@ -313,15 +274,6 @@ export async function handleChatStream(
       return;
     }
 
-    const feedbackPromise = requestLearningFeedback(
-      apiKey,
-      latestUserMessage,
-      controller.signal,
-    ).catch((error: unknown) => {
-      console.warn('Learning feedback skipped:', error);
-      return [];
-    });
-
     for await (const text of readDeepSeekStream(response.body)) {
       reply += text;
       writeStreamEvent(res, { type: 'delta', text });
@@ -340,9 +292,6 @@ export async function handleChatStream(
         void extractMemories(userId, latestUserMessage).catch(console.error);
       },
     );
-    const suggestions = await feedbackPromise;
-    if (suggestions.length)
-      writeStreamEvent(res, { type: 'feedback', suggestions });
     writeStreamEvent(res, { type: 'complete' });
   } catch (error: unknown) {
     if (controller.signal.aborted) {
@@ -546,14 +495,7 @@ export async function handleChat(
         void extractMemories(userId, latestUserMessage).catch(console.error);
       },
     );
-    const suggestions = await requestLearningFeedback(
-      apiKey,
-      latestUserMessage,
-    ).catch((error: unknown) => {
-      console.warn('Learning feedback skipped:', error);
-      return [];
-    });
-    res.json({ reply, suggestions });
+    res.json({ reply });
   } catch (error) {
     console.error('DeepSeek request failed:', error);
     res.status(502).json({ error: 'Unable to reach DeepSeek.' });

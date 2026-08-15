@@ -99,17 +99,6 @@ export class ChatPageComponent {
             });
             this.status.set({ state: 'streaming' });
           }
-          if (event.type === 'feedback') {
-            this.messages.update((messages) => {
-              const lastMessage = messages.at(-1);
-              return lastMessage?.role === 'assistant'
-                ? [
-                    ...messages.slice(0, -1),
-                    { ...lastMessage, suggestions: event.suggestions },
-                  ]
-                : messages;
-            });
-          }
           if (event.type === 'complete') this.status.set({ state: 'idle' });
         },
         error: () =>

@@ -45,33 +45,6 @@
   background: #edf4ef;
   line-height: 1.55;
 }
-.suggestions {
-  display: grid;
-  gap: 10px;
-  margin-top: 10px;
-  padding-left: 14px;
-  border-left: 2px solid #b9dbc9;
-  text-align: left;
-}
-.suggestion {
-  display: grid;
-  gap: 3px;
-}
-.suggestion span {
-  color: #7a877f;
-  font-size: 0.78rem;
-  text-decoration: line-through;
-}
-.suggestion strong {
-  color: #1f6b52;
-  font-size: 0.88rem;
-  font-weight: 600;
-}
-.suggestion small {
-  color: #647169;
-  font-size: 0.76rem;
-  line-height: 1.4;
-}
 .message-role {
   color: #1f8a68;
   font-size: 0.72rem;

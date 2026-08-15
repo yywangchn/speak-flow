@@ -154,35 +154,4 @@ describe('ChatPageComponent', () => {
       message: 'The reply could not be generated. Please try again.',
     });
   });
-
-  it('attaches and renders feedback on the latest assistant message', () => {
-    chatService.streamMessage.mockReturnValue(
-      of(
-        { type: 'delta', text: 'I understand.' },
-        {
-          type: 'feedback',
-          suggestions: [
-            {
-              original: 'I very like it.',
-              suggestion: 'I really like it.',
-              explanation: 'Use really instead of very.',
-            },
-          ],
-        },
-        { type: 'complete' },
-      ),
-    );
-    const fixture = TestBed.createComponent(ChatPageComponent);
-    const component = fixture.componentInstance;
-    component.draft.set('I very like it.');
-
-    component.sendMessage();
-    fixture.detectChanges();
-
-    expect(component.messages().at(-1)?.suggestions).toHaveLength(1);
-    const suggestion = fixture.nativeElement.querySelector(
-      '[aria-label="English suggestions"]',
-    ) as HTMLElement | null;
-    expect(suggestion?.textContent).toContain('I really like it.');
-  });
 });

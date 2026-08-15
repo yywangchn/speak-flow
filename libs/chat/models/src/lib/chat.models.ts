@@ -4,21 +4,10 @@ export type ChatMessage = {
   readonly id: string;
   readonly role: ChatRole;
   readonly text: string;
-  readonly suggestions?: readonly LearningSuggestion[];
-};
-
-export type LearningSuggestion = {
-  readonly original: string;
-  readonly suggestion: string;
-  readonly explanation: string;
 };
 
 export type ChatStreamEvent =
   | { readonly type: 'delta'; readonly text: string }
-  | {
-      readonly type: 'feedback';
-      readonly suggestions: readonly LearningSuggestion[];
-    }
   | { readonly type: 'complete' }
   | { readonly type: 'error'; readonly message: string }
   | { readonly type: 'cancelled' };
