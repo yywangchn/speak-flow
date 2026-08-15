@@ -66,6 +66,10 @@ type ChatStreamResponse = {
   end(): void;
 };
 
+export function handleHealth(_req: unknown, res: ChatResponse): void {
+  res.json({ status: 'ok' });
+}
+
 async function extractMemoriesWithAi(
   apiKey: string,
   userId: string,
@@ -130,6 +134,8 @@ async function extractMemoriesWithAi(
 }
 
 app.use(express.json({ limit: '32kb' }));
+
+app.get('/api/health', handleHealth);
 
 app.post(
   '/api/auth/register',

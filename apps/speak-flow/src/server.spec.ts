@@ -14,6 +14,7 @@ process.env['DASHSCOPE_BASE_URL'] = 'https://embedding.example.com';
 
 let handleChat: (typeof import('./server'))['handleChat'];
 let handleChatStream: (typeof import('./server'))['handleChatStream'];
+let handleHealth: (typeof import('./server'))['handleHealth'];
 let memoryStore: typeof import('./memory-store');
 let chatStore: typeof import('./chat-store');
 let deepSeekPrompt = '';
@@ -22,6 +23,7 @@ beforeAll(async () => {
   const serverModule = await import('./server');
   handleChat = serverModule.handleChat;
   handleChatStream = serverModule.handleChatStream;
+  handleHealth = serverModule.handleHealth;
   memoryStore = await import('./memory-store');
   chatStore = await import('./chat-store');
 });
@@ -36,6 +38,21 @@ afterAll(async () => {
 });
 
 describe('chat API memory retrieval', () => {
+  it('reports that the server process is healthy without authentication', () => {
+    let responseBody: unknown;
+
+    handleHealth(undefined, {
+      status() {
+        return this;
+      },
+      json(body) {
+        responseBody = body;
+      },
+    });
+
+    expect(responseBody).toEqual({ status: 'ok' });
+  });
+
   it('injects only relevant memories into the chat prompt', async () => {
     const userId = 'retrieval-test-user';
     memoryStore.saveExtractedMemories(
