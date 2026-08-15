@@ -1,180 +1,151 @@
 # SpeakFlow
 
-## Local development
+SpeakFlow is a locally run AI English conversation companion. It focuses on a
+minimal, friend-like chat experience: replies stream in real time, useful facts
+become long-term memories, and English corrections are woven naturally into the
+conversation instead of appearing as lessons or scorecards.
 
-Create your local environment file from the template, then set the API keys:
+## Highlights
+
+- Streaming DeepSeek responses with cancellation and partial-reply persistence
+- Session-based authentication with isolated chat history and memories
+- PostgreSQL persistence and pgvector semantic memory retrieval
+- Structured AI memory extraction with sensitive-data filtering
+- Versioned prompts, model settings, retrieval thresholds, and evaluation data
+- Offline evaluations for memory extraction, retrieval quality, and streaming
+- Angular SSR, production container, health check, and database migrations
+
+## Architecture
+
+The Angular application is split into domain libraries under `libs/`. The app
+project owns routing and the Express SSR/API host, while chat UI, state
+coordination, and API access remain separated by library boundaries.
+
+```text
+Angular chat UI
+    |  authenticated NDJSON stream
+Express SSR/API
+    |-- DeepSeek chat and memory extraction
+    |-- DashScope text embeddings
+    `-- PostgreSQL + pgvector
+          |-- users and sessions
+          |-- chat history
+          `-- durable memories and vectors
+```
+
+For each message, the server embeds the current text, asks pgvector for the most
+relevant memories, adds only those memories to the prompt, and streams the model
+reply back to Angular. Memory extraction runs after the reply and is deliberately
+non-blocking, so an extraction outage does not interrupt the conversation.
+
+## Technology
+
+- Angular 22 standalone components, Signals, RxJS, and SCSS
+- Nx integrated monorepo and Vitest
+- Express 4 and Angular SSR
+- PostgreSQL 16 with pgvector HNSW indexing
+- DeepSeek chat completions and DashScope embeddings
+- Docker Compose for the local database and production-like runtime
+
+## Local Setup
+
+Prerequisites:
+
+- Node.js 22
+- npm
+- Docker Desktop (for PostgreSQL and pgvector)
+- DeepSeek and DashScope API keys
+
+Install dependencies and create the local environment file:
 
 ```sh
+npm ci
 cp .env.example .env
 ```
 
-The browser calls local server endpoints. Keep API keys in `.env`; do not
-expose them in Angular configuration or client-side code.
+Set `DEEPSEEK_API_KEY` and `DASHSCOPE_API_KEY` in `.env`. API keys stay on the
+server and must not be added to Angular configuration or client-side code.
 
-Start the application:
-
-```sh
-npm start
-```
-
-## PostgreSQL with pgvector
-
-PostgreSQL stores accounts, sessions, chat history, memories, and pgvector
-embeddings. Start the local database before the application:
+Start PostgreSQL, apply migrations, and run the app:
 
 ```sh
 docker compose up -d postgres
-docker compose ps
-```
-
-The local database is available at `127.0.0.1:5432` and uses the development
-credentials documented in `.env.example`. Its data lives in the named Docker
-volume `postgres-data`. Stop the local database without deleting data:
-
-```sh
-docker compose down
-```
-
-Run schema migrations after pulling database changes:
-
-```sh
 npm run db:migrate
+npm start
 ```
 
-## Production container
+Open `http://127.0.0.1:4200`, create a local account, and start chatting. Data is
+kept in the Docker volume `postgres-data`. Stop the database without deleting
+that volume with `docker compose down`.
 
-Build and run the production SSR application with PostgreSQL:
+## Quality Checks
+
+Run the same checks used before commits:
 
 ```sh
-docker compose up --build app
+npx prettier --check .
+npx nx test speak-flow --skip-nx-cache
+npx nx lint speak-flow --skip-nx-cache
+npx nx build speak-flow --configuration=production --skip-nx-cache
 ```
 
-The application is available at `http://127.0.0.1:4000`. Container startup
-applies pending database migrations before starting the server. The health
-check endpoint is `GET /api/health`.
+PostgreSQL integration tests are opt-in and require the local database:
 
-For a hosted environment, provide `DATABASE_URL`, `DEEPSEEK_API_KEY`,
-`DASHSCOPE_API_KEY`, `DASHSCOPE_BASE_URL`, and `NG_ALLOWED_HOSTS`. The allowed
-hosts value is a comma-separated list of deployment hostnames without schemes
-or ports. Set `NODE_ENV=production` so authentication cookies are marked
-Secure; the production image sets this automatically.
+```sh
+npm run test:postgres
+```
 
-### Import existing SQLite data
+The AI quality suites call configured model APIs and may incur a small cost:
 
-Register the target account first. Then list the legacy browser identities and
-choose the one whose message and memory counts match your data:
+```sh
+npm run eval:memory
+npm run eval:retrieval
+npm run eval:stream
+```
+
+They measure extraction precision/recall and sensitive-data rejection,
+retrieval Recall@3/Precision@3/empty rate, and streaming latency, failures, and
+cancellation behavior. The datasets live in `tools/evals/` and are versioned
+with the AI settings they validate.
+
+## Project Layout
+
+```text
+apps/speak-flow/          Angular shell, Express API, auth, and persistence
+libs/chat/                Chat models, data access, UI, and feature orchestration
+libs/memory/              Shared memory models and client data access
+tools/database/           SQLite-to-PostgreSQL import utility
+tools/evals/              Offline AI evaluation datasets and runners
+tools/spikes/             Isolated embedding experiment
+```
+
+## Data Migration
+
+The current runtime uses PostgreSQL. To import data from the earlier SQLite
+prototype, first register the target account, then inspect and import the legacy
+identity:
 
 ```sh
 npm run db:import-sqlite -- --list-users
 npm run db:import-sqlite -- --user-email you@example.com --legacy-user-id <id>
 ```
 
-When the database contains exactly one registered account, its email does not
-need to appear in the command:
+When PostgreSQL contains exactly one account, use:
 
 ```sh
 npm run db:import-sqlite -- --only-user --legacy-user-id <id>
 ```
 
-The import is idempotent, so rerunning it does not duplicate records.
+The import is idempotent and can be rerun without duplicating records.
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+## Production-Like Container
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
-
-[Learn more about this workspace setup and its capabilities](https://nx.dev/getting-started/tutorials/angular-monorepo-tutorial?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
-
-## Run tasks
-
-To run the dev server for your app, use:
+Although SpeakFlow is intended for local use, its production SSR image can be
+verified locally:
 
 ```sh
-npx nx serve speak-flow
+docker compose up --build app
 ```
 
-To create a production bundle:
-
-```sh
-npx nx build speak-flow
-```
-
-To see all available targets to run for a project, run:
-
-```sh
-npx nx show project speak-flow
-```
-
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
-
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Add new projects
-
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
-
-Use the plugin's generator to create new projects.
-
-To generate a new application, use:
-
-```sh
-npx nx g @nx/angular:app demo
-```
-
-To generate a new library, use:
-
-```sh
-npx nx g @nx/angular:lib mylib
-```
-
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
-
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Set up CI!
-
-### Step 1
-
-To connect to Nx Cloud, run the following command:
-
-```sh
-npx nx connect
-```
-
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
-
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-### Step 2
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
-```
-
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Install Nx Console
-
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
-
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Useful links
-
-Learn more:
-
-- [Learn more about this workspace setup](https://nx.dev/getting-started/tutorials/angular-monorepo-tutorial?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Open `http://127.0.0.1:4000`. Container startup applies pending migrations, and
+`GET /api/health` reports process health.

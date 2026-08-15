@@ -94,9 +94,13 @@ function getSessionToken(req: Request): string | null {
   const cookie = cookies.find((item) =>
     item.trim().startsWith(`${COOKIE_NAME}=`),
   );
-  return cookie
-    ? decodeURIComponent(cookie.trim().slice(COOKIE_NAME.length + 1))
-    : null;
+  if (!cookie) return null;
+
+  try {
+    return decodeURIComponent(cookie.trim().slice(COOKIE_NAME.length + 1));
+  } catch {
+    return null;
+  }
 }
 
 function setSessionCookie(res: Response, token: string): void {
