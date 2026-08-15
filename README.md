@@ -19,8 +19,8 @@ npm start
 
 ## PostgreSQL with pgvector
 
-PostgreSQL is prepared for the upcoming persistence migration. It is not used
-by the application yet; chat history and memories still use SQLite.
+PostgreSQL stores accounts, sessions, chat history, memories, and pgvector
+embeddings. Start the local database before the application:
 
 ```sh
 docker compose up -d postgres
@@ -34,6 +34,30 @@ volume `postgres-data`. Stop the local database without deleting data:
 ```sh
 docker compose down
 ```
+
+Run schema migrations after pulling database changes:
+
+```sh
+npm run db:migrate
+```
+
+## Production container
+
+Build and run the production SSR application with PostgreSQL:
+
+```sh
+docker compose up --build app
+```
+
+The application is available at `http://127.0.0.1:4000`. Container startup
+applies pending database migrations before starting the server. The health
+check endpoint is `GET /api/health`.
+
+For a hosted environment, provide `DATABASE_URL`, `DEEPSEEK_API_KEY`,
+`DASHSCOPE_API_KEY`, `DASHSCOPE_BASE_URL`, and `NG_ALLOWED_HOSTS`. The allowed
+hosts value is a comma-separated list of deployment hostnames without schemes
+or ports. Set `NODE_ENV=production` so authentication cookies are marked
+Secure; the production image sets this automatically.
 
 ### Import existing SQLite data
 
