@@ -47,6 +47,8 @@ export class ChatMessageListComponent {
   private readonly messageContainer =
     viewChild<ElementRef<HTMLDivElement>>('messageContainer');
   private previousMessageCount = 0;
+  private previousLatestMessageId: string | undefined;
+  private previousLatestMessageText: string | undefined;
   private isNearBottom = true;
 
   readonly messages = input<readonly ChatMessage[]>([]);
@@ -56,19 +58,32 @@ export class ChatMessageListComponent {
     afterRenderEffect(() => {
       const messages = this.messages();
       const messageCount = messages.length;
-      if (messageCount === this.previousMessageCount) return;
-
       const latestMessage = messages.at(-1);
+      const isNewMessage = latestMessage?.id !== this.previousLatestMessageId;
+      const latestTextChanged =
+        latestMessage?.text !== this.previousLatestMessageText;
+      if (
+        messageCount === this.previousMessageCount &&
+        !isNewMessage &&
+        !latestTextChanged
+      )
+        return;
+
+      const isInitialMessage = this.previousMessageCount === 0;
       const shouldFollow =
-        this.previousMessageCount === 0 ||
+        isInitialMessage ||
         this.isNearBottom ||
-        latestMessage?.role === 'user';
+        (isNewMessage && latestMessage?.role === 'user');
       this.previousMessageCount = messageCount;
+      this.previousLatestMessageId = latestMessage?.id;
+      this.previousLatestMessageText = latestMessage?.text;
 
       if (shouldFollow) {
-        this.scrollToLatest(
-          this.previousMessageCount === 0 ? 'auto' : 'smooth',
-        );
+        const behavior =
+          isInitialMessage || !isNewMessage || latestMessage?.role === 'user'
+            ? 'auto'
+            : 'smooth';
+        this.scrollToLatest(behavior);
       } else {
         this.showLatest.set(true);
       }
