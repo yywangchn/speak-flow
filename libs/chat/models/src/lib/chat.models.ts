@@ -19,3 +19,9 @@ export type ChatStatus =
   | { readonly state: 'streaming' }
   | { readonly state: 'cancelled' }
   | { readonly state: 'error'; readonly message: string };
+
+export type VoiceCaptureStatus =
+  | { readonly state: 'idle' }
+  | { readonly state: 'listening' }
+  | { readonly state: 'processing' }
+  | { readonly state: 'error'; readonly message: string };
