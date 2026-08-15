@@ -93,8 +93,12 @@ import { ChatStatus, VoiceCaptureStatus } from '@speak-flow/chat-models';
           }}
         </button>
       </form>
-      @if (voiceStatus().state === 'error') {
-        <p class="voice-error" role="alert">{{ voiceStatus().message }}</p>
+      @if (voiceStatus(); as currentVoiceStatus) {
+        @if (currentVoiceStatus.state === 'error') {
+          <p class="voice-error" role="alert">
+            {{ currentVoiceStatus.message }}
+          </p>
+        }
       }
     </div>
   `,
