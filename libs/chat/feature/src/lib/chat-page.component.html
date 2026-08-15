@@ -14,8 +14,13 @@
     <chat-reply-form
       [draft]="draft()"
       [status]="status()"
+      [voiceStatus]="voiceStatus()"
+      [voiceSupported]="voiceSupported"
+      [playbackEnabled]="playbackEnabled()"
       (draftChange)="draft.set($event)"
       (submitted)="sendMessage()"
+      (voiceToggled)="toggleVoiceCapture()"
+      (playbackToggled)="togglePlayback()"
       (keydown)="onReplyKeydown($event)"
       (compositionStart)="onCompositionStart()"
       (compositionEnd)="onCompositionEnd()"

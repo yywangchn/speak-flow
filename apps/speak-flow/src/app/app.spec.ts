@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { ChatService } from '@speak-flow/chat-data-access';
+import { BrowserVoiceService, ChatService } from '@speak-flow/chat-data-access';
 import { of, Subject, throwError } from 'rxjs';
 // The route lazy-loads this feature; the app-level tests need the component directly.
 // eslint-disable-next-line @nx/enforce-module-boundaries
@@ -13,17 +14,37 @@ describe('ChatPageComponent', () => {
     loadHistory: vi.fn(),
     logout: vi.fn(),
   };
+  const voiceService = {
+    recognitionSupported: true,
+    playbackEnabled: signal(true),
+    listen: vi.fn(),
+    stopListening: vi.fn(),
+    cancelListening: vi.fn(),
+    setPlaybackEnabled: vi.fn((enabled: boolean) =>
+      voiceService.playbackEnabled.set(enabled),
+    ),
+    speak: vi.fn(),
+    cancelSpeech: vi.fn(),
+  };
 
   beforeEach(async () => {
     chatService.sendMessage.mockReset();
     chatService.streamMessage.mockReset();
     chatService.loadHistory.mockReset();
     chatService.logout.mockReset();
+    voiceService.playbackEnabled.set(true);
+    voiceService.listen.mockReset();
+    voiceService.stopListening.mockReset();
+    voiceService.cancelListening.mockReset();
+    voiceService.setPlaybackEnabled.mockClear();
+    voiceService.speak.mockReset();
+    voiceService.cancelSpeech.mockReset();
     chatService.loadHistory.mockReturnValue(of([]));
     await TestBed.configureTestingModule({
       imports: [ChatPageComponent],
       providers: [
         { provide: ChatService, useValue: chatService },
+        { provide: BrowserVoiceService, useValue: voiceService },
         provideRouter([]),
       ],
     }).compileComponents();
@@ -60,6 +81,9 @@ describe('ChatPageComponent', () => {
       'That sounds good. What have you been up to?',
     );
     expect(component.status()).toEqual({ state: 'idle' });
+    expect(voiceService.speak).toHaveBeenCalledWith(
+      'That sounds good. What have you been up to?',
+    );
   });
 
   it('restores recent messages when the page opens', () => {
@@ -78,6 +102,7 @@ describe('ChatPageComponent', () => {
       { id: 'saved-2', role: 'assistant', text: 'Welcome back!' },
     ]);
     expect(component.status()).toEqual({ state: 'idle' });
+    expect(voiceService.speak).not.toHaveBeenCalled();
   });
 
   it('keeps Shift+Enter available for a new line', () => {
@@ -153,5 +178,67 @@ describe('ChatPageComponent', () => {
       state: 'error',
       message: 'The reply could not be generated. Please try again.',
     });
+    expect(voiceService.speak).not.toHaveBeenCalled();
+  });
+
+  it('appends a final voice transcript to the existing draft', () => {
+    voiceService.listen.mockReturnValue(of('how are you'));
+    const component =
+      TestBed.createComponent(ChatPageComponent).componentInstance;
+    component.draft.set('Hello,');
+
+    component.toggleVoiceCapture();
+
+    expect(component.draft()).toBe('Hello, how are you');
+    expect(component.voiceStatus()).toEqual({ state: 'idle' });
+    expect(chatService.streamMessage).not.toHaveBeenCalled();
+  });
+
+  it('stops an active recording before processing its result', () => {
+    const transcript = new Subject<string>();
+    voiceService.listen.mockReturnValue(transcript);
+    const component =
+      TestBed.createComponent(ChatPageComponent).componentInstance;
+
+    component.toggleVoiceCapture();
+    component.toggleVoiceCapture();
+
+    expect(voiceService.stopListening).toHaveBeenCalledOnce();
+    expect(component.voiceStatus()).toEqual({ state: 'processing' });
+    transcript.next('A final transcript');
+    transcript.complete();
+    expect(component.draft()).toBe('A final transcript');
+    expect(component.voiceStatus()).toEqual({ state: 'idle' });
+  });
+
+  it('shows voice errors without breaking text chat', () => {
+    voiceService.listen.mockReturnValue(
+      throwError(() => new Error('Microphone access is required.')),
+    );
+    const component =
+      TestBed.createComponent(ChatPageComponent).componentInstance;
+
+    component.toggleVoiceCapture();
+
+    expect(component.voiceStatus()).toEqual({
+      state: 'error',
+      message: 'Microphone access is required.',
+    });
+    expect(component.status()).toEqual({ state: 'idle' });
+  });
+
+  it('toggles playback and stops speech when sending another message', () => {
+    chatService.streamMessage.mockReturnValue(
+      of({ type: 'delta', text: 'A reply.' }, { type: 'complete' }),
+    );
+    const component =
+      TestBed.createComponent(ChatPageComponent).componentInstance;
+
+    component.togglePlayback();
+    component.draft.set('Next message');
+    component.sendMessage();
+
+    expect(voiceService.setPlaybackEnabled).toHaveBeenCalledWith(false);
+    expect(voiceService.cancelSpeech).toHaveBeenCalled();
   });
 });

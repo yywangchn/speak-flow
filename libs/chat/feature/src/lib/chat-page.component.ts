@@ -13,8 +13,9 @@ import {
   ChatRole,
   ChatStatus,
   ChatStreamEvent,
+  VoiceCaptureStatus,
 } from '@speak-flow/chat-models';
-import { ChatService } from '@speak-flow/chat-data-access';
+import { BrowserVoiceService, ChatService } from '@speak-flow/chat-data-access';
 import {
   ChatMessageListComponent,
   ChatReplyFormComponent,
@@ -30,17 +31,26 @@ import {
 })
 export class ChatPageComponent {
   private readonly chatService = inject(ChatService);
+  private readonly voiceService = inject(BrowserVoiceService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private isComposing = false;
   private nextMessageId = 0;
   private activeStream?: Subscription;
+  private activeVoiceCapture?: Subscription;
 
   readonly draft = signal('');
   readonly status = signal<ChatStatus>({ state: 'loading' });
+  readonly voiceStatus = signal<VoiceCaptureStatus>({ state: 'idle' });
   readonly messages = signal<ChatMessage[]>([]);
+  readonly voiceSupported = this.voiceService.recognitionSupported;
+  readonly playbackEnabled = this.voiceService.playbackEnabled;
 
   constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.voiceService.cancelListening();
+      this.voiceService.cancelSpeech();
+    });
     this.chatService
       .loadHistory()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -71,6 +81,8 @@ export class ChatPageComponent {
   sendMessage(): void {
     const text = this.draft().trim();
     if (!text || this.status().state === 'loading') return;
+    this.cancelVoiceCapture();
+    this.voiceService.cancelSpeech();
     if (this.status().state === 'streaming') {
       this.activeStream?.unsubscribe();
       this.status.set({ state: 'cancelled' });
@@ -99,7 +111,14 @@ export class ChatPageComponent {
             });
             this.status.set({ state: 'streaming' });
           }
-          if (event.type === 'complete') this.status.set({ state: 'idle' });
+          if (event.type === 'complete') {
+            this.status.set({ state: 'idle' });
+            const completedReply = this.messages().at(-1);
+            if (completedReply?.role === 'assistant')
+              this.voiceService.speak(completedReply.text);
+          }
+          if (event.type === 'cancelled')
+            this.status.set({ state: 'cancelled' });
         },
         error: () =>
           this.status.set({
@@ -107,6 +126,37 @@ export class ChatPageComponent {
             message: 'The reply could not be generated. Please try again.',
           }),
       });
+  }
+
+  toggleVoiceCapture(): void {
+    if (this.voiceStatus().state === 'listening') {
+      this.voiceStatus.set({ state: 'processing' });
+      this.voiceService.stopListening();
+      return;
+    }
+    if (!this.voiceSupported || this.isChatBusy()) return;
+
+    this.voiceService.cancelSpeech();
+    this.voiceStatus.set({ state: 'listening' });
+    this.activeVoiceCapture = this.voiceService
+      .listen()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (transcript) => this.appendTranscript(transcript),
+        error: (error: unknown) =>
+          this.voiceStatus.set({
+            state: 'error',
+            message:
+              error instanceof Error
+                ? error.message
+                : 'Your speech could not be recognized. Please try again.',
+          }),
+        complete: () => this.voiceStatus.set({ state: 'idle' }),
+      });
+  }
+
+  togglePlayback(): void {
+    this.voiceService.setPlaybackEnabled(!this.playbackEnabled());
   }
 
   onReplyKeydown(event: KeyboardEvent): void {
@@ -136,6 +186,27 @@ export class ChatPageComponent {
       .subscribe({
         next: () => void this.router.navigateByUrl('/login'),
       });
+  }
+
+  private appendTranscript(transcript: string): void {
+    const currentDraft = this.draft().trimEnd();
+    this.draft.set(currentDraft ? `${currentDraft} ${transcript}` : transcript);
+  }
+
+  private cancelVoiceCapture(): void {
+    if (
+      this.voiceStatus().state !== 'listening' &&
+      this.voiceStatus().state !== 'processing'
+    )
+      return;
+    this.activeVoiceCapture?.unsubscribe();
+    this.voiceService.cancelListening();
+    this.voiceStatus.set({ state: 'idle' });
+  }
+
+  private isChatBusy(): boolean {
+    const state = this.status().state;
+    return state === 'loading' || state === 'sending' || state === 'streaming';
   }
 
   private createMessage(role: ChatRole, text: string): ChatMessage {
