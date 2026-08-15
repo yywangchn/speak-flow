@@ -8,6 +8,7 @@ conversation instead of appearing as lessons or scorecards.
 ## Highlights
 
 - Streaming DeepSeek responses with cancellation and partial-reply persistence
+- Safari voice input and automatic AI reply playback using browser speech APIs
 - Session-based authentication with isolated chat history and memories
 - PostgreSQL persistence and pgvector semantic memory retrieval
 - Structured AI memory extraction with sensitive-data filtering
@@ -77,6 +78,24 @@ npm start
 Open `http://127.0.0.1:4200`, create a local account, and start chatting. Data is
 kept in the Docker volume `postgres-data`. Stop the database without deleting
 that volume with `docker compose down`.
+
+## Voice Chat
+
+On macOS Safari, use the microphone button to start and stop English voice
+input. SpeakFlow requests microphone permission on first use and places the
+final `en-US` transcript in the message field so it can be checked or edited
+before sending.
+
+Newly completed AI replies are read aloud automatically. The speaker button
+turns playback on or off, stops current speech when muted, and remembers the
+choice in local browser storage. Welcome text and restored history are never
+read aloud.
+
+Voice capture uses Safari's browser speech recognition rather than a SpeakFlow
+server endpoint. Availability and recognition quality therefore depend on the
+browser and operating system, and the browser may use an online system service.
+Raw audio is not stored by SpeakFlow. If recognition is unavailable, the
+microphone button is hidden and text chat remains fully usable.
 
 ## Quality Checks
 
