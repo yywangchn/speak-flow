@@ -38,6 +38,7 @@ export class ChatPageComponent {
   private nextMessageId = 0;
   private activeStream?: Subscription;
   private activeVoiceCapture?: Subscription;
+  private voiceDraftPrefix = '';
 
   readonly draft = signal('');
   readonly status = signal<ChatStatus>({ state: 'loading' });
@@ -137,12 +138,13 @@ export class ChatPageComponent {
     if (!this.voiceSupported || this.isChatBusy()) return;
 
     this.voiceService.cancelSpeech();
+    this.voiceDraftPrefix = this.draft().trimEnd();
     this.voiceStatus.set({ state: 'listening' });
     this.activeVoiceCapture = this.voiceService
       .listen()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (transcript) => this.appendTranscript(transcript),
+        next: (transcript) => this.showTranscript(transcript.text),
         error: (error: unknown) =>
           this.voiceStatus.set({
             state: 'error',
@@ -188,9 +190,12 @@ export class ChatPageComponent {
       });
   }
 
-  private appendTranscript(transcript: string): void {
-    const currentDraft = this.draft().trimEnd();
-    this.draft.set(currentDraft ? `${currentDraft} ${transcript}` : transcript);
+  private showTranscript(transcript: string): void {
+    this.draft.set(
+      this.voiceDraftPrefix
+        ? `${this.voiceDraftPrefix} ${transcript}`
+        : transcript,
+    );
   }
 
   private cancelVoiceCapture(): void {

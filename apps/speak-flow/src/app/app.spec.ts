@@ -184,7 +184,9 @@ describe('ChatPageComponent', () => {
   });
 
   it('appends a final voice transcript to the existing draft', () => {
-    voiceService.listen.mockReturnValue(of('how are you'));
+    voiceService.listen.mockReturnValue(
+      of({ text: 'how are you', isFinal: true }),
+    );
     const component =
       TestBed.createComponent(ChatPageComponent).componentInstance;
     component.draft.set('Hello,');
@@ -197,7 +199,7 @@ describe('ChatPageComponent', () => {
   });
 
   it('stops an active recording before processing its result', () => {
-    const transcript = new Subject<string>();
+    const transcript = new Subject<{ text: string; isFinal: boolean }>();
     voiceService.listen.mockReturnValue(transcript);
     const component =
       TestBed.createComponent(ChatPageComponent).componentInstance;
@@ -207,10 +209,28 @@ describe('ChatPageComponent', () => {
 
     expect(voiceService.stopListening).toHaveBeenCalledOnce();
     expect(component.voiceStatus()).toEqual({ state: 'processing' });
-    transcript.next('A final transcript');
+    transcript.next({ text: 'A final transcript', isFinal: true });
     transcript.complete();
     expect(component.draft()).toBe('A final transcript');
     expect(component.voiceStatus()).toEqual({ state: 'idle' });
+  });
+
+  it('replaces interim voice text instead of duplicating cumulative results', () => {
+    const transcript = new Subject<{ text: string; isFinal: boolean }>();
+    voiceService.listen.mockReturnValue(transcript);
+    const component =
+      TestBed.createComponent(ChatPageComponent).componentInstance;
+    component.draft.set('Before');
+
+    component.toggleVoiceCapture();
+    transcript.next({ text: 'Hello', isFinal: false });
+    expect(component.draft()).toBe('Before Hello');
+    transcript.next({ text: 'Hello how are you', isFinal: false });
+    expect(component.draft()).toBe('Before Hello how are you');
+    transcript.next({ text: 'Hello, how are you?', isFinal: true });
+
+    expect(component.draft()).toBe('Before Hello, how are you?');
+    expect(chatService.streamMessage).not.toHaveBeenCalled();
   });
 
   it('shows voice errors without breaking text chat', () => {

@@ -48,6 +48,11 @@ export type VoiceBrowserWindow = {
   readonly localStorage?: Pick<Storage, 'getItem' | 'setItem'>;
 };
 
+export type VoiceTranscript = {
+  readonly text: string;
+  readonly isFinal: boolean;
+};
+
 export const VOICE_BROWSER_WINDOW =
   new InjectionToken<VoiceBrowserWindow | null>('VOICE_BROWSER_WINDOW', {
     providedIn: 'root',
@@ -65,8 +70,8 @@ export class BrowserVoiceService {
   readonly recognitionSupported = Boolean(this.recognitionConstructor);
   readonly playbackEnabled = signal(this.readPlaybackPreference());
 
-  listen(): Observable<string> {
-    return new Observable<string>((subscriber) => {
+  listen(): Observable<VoiceTranscript> {
+    return new Observable<VoiceTranscript>((subscriber) => {
       const Recognition = this.recognitionConstructor;
       if (!Recognition) {
         subscriber.error(new Error('Speech recognition is not supported.'));
@@ -79,14 +84,18 @@ export class BrowserVoiceService {
       this.activeRecognition = recognition;
       recognition.lang = 'en-US';
       recognition.continuous = false;
-      recognition.interimResults = false;
+      recognition.interimResults = true;
       recognition.onresult = (event) => {
-        const transcript = Array.from(event.results)
-          .filter((result) => result.isFinal)
+        const results = Array.from(event.results);
+        const text = results
           .map((result) => result[0]?.transcript?.trim() ?? '')
           .filter(Boolean)
           .join(' ');
-        if (transcript) subscriber.next(transcript);
+        if (text)
+          subscriber.next({
+            text,
+            isFinal: results.every((result) => result.isFinal),
+          });
       };
       recognition.onerror = (event) => {
         finished = true;

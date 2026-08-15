@@ -24,7 +24,7 @@ describe('BrowserVoiceService', () => {
     expect(service.playbackEnabled()).toBe(true);
   });
 
-  it('configures Safari recognition and returns the final transcript', () => {
+  it('configures Safari recognition and returns interim and final transcripts', () => {
     const callbacks: RecognitionCallbacks = {};
     const recognition = {
       lang: '',
@@ -50,9 +50,12 @@ describe('BrowserVoiceService', () => {
         }
       },
     });
-    const transcripts: string[] = [];
+    const transcripts: Array<{ text: string; isFinal: boolean }> = [];
 
     service.listen().subscribe((value) => transcripts.push(value));
+    callbacks.result?.({
+      results: [{ isFinal: false, 0: { transcript: '  Hello  ' } }],
+    });
     callbacks.result?.({
       results: [{ isFinal: true, 0: { transcript: '  Hello there  ' } }],
     });
@@ -62,10 +65,13 @@ describe('BrowserVoiceService', () => {
     expect(recognition).toMatchObject({
       lang: 'en-US',
       continuous: false,
-      interimResults: false,
+      interimResults: true,
     });
     expect(recognition.start).toHaveBeenCalledOnce();
-    expect(transcripts).toEqual(['Hello there']);
+    expect(transcripts).toEqual([
+      { text: 'Hello', isFinal: false },
+      { text: 'Hello there', isFinal: true },
+    ]);
   });
 
   it('stops recognition and reports microphone permission errors', () => {
