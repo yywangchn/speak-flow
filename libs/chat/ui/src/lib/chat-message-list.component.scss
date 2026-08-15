@@ -38,12 +38,14 @@
 .message {
   max-width: 84%;
 }
-.message p {
+.message-content {
+  display: block;
   margin: 7px 0 0;
   padding: 14px 16px;
   border-radius: 4px 14px 14px 14px;
   background: #edf4ef;
   line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 .message-role {
   color: #1f8a68;
@@ -59,11 +61,99 @@
 .user-message .message-role {
   color: #7a877f;
 }
-.user-message p {
+.user-message .message-content {
   border-radius: 14px 4px 14px 14px;
   background: #1f6b52;
   color: white;
   text-align: left;
+}
+:host ::ng-deep .message-content > :first-child {
+  margin-top: 0;
+}
+:host ::ng-deep .message-content > :last-child {
+  margin-bottom: 0;
+}
+:host ::ng-deep .message-content p,
+:host ::ng-deep .message-content ul,
+:host ::ng-deep .message-content ol,
+:host ::ng-deep .message-content blockquote,
+:host ::ng-deep .message-content pre,
+:host ::ng-deep .message-content table {
+  margin: 0.7em 0;
+}
+:host ::ng-deep .message-content h1,
+:host ::ng-deep .message-content h2,
+:host ::ng-deep .message-content h3,
+:host ::ng-deep .message-content h4,
+:host ::ng-deep .message-content h5,
+:host ::ng-deep .message-content h6 {
+  margin: 0.9em 0 0.45em;
+  font-size: 1em;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+:host ::ng-deep .message-content ul,
+:host ::ng-deep .message-content ol {
+  padding-left: 1.4em;
+}
+:host ::ng-deep .message-content blockquote {
+  padding-left: 0.85em;
+  border-left: 3px solid #b8cec0;
+  color: #496356;
+}
+:host ::ng-deep .user-message .message-content blockquote {
+  border-left-color: rgba(255, 255, 255, 0.45);
+  color: inherit;
+}
+:host ::ng-deep .message-content code {
+  padding: 0.12em 0.32em;
+  border-radius: 3px;
+  background: rgba(31, 42, 36, 0.08);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+}
+:host ::ng-deep .message-content pre {
+  max-width: 100%;
+  padding: 12px;
+  overflow-x: auto;
+  border-radius: 4px;
+  background: #17241e;
+  color: #f4f7f5;
+}
+:host ::ng-deep .message-content pre code {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+:host ::ng-deep .message-content a {
+  color: #176f55;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+:host ::ng-deep .user-message .message-content a {
+  color: #fff;
+}
+:host ::ng-deep .message-content img {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  margin: 0.7em 0;
+  object-fit: contain;
+}
+:host ::ng-deep .message-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+:host ::ng-deep .message-content th,
+:host ::ng-deep .message-content td {
+  padding: 6px 8px;
+  border: 1px solid #cbd9d0;
+  text-align: left;
+}
+:host ::ng-deep .user-message .message-content code {
+  background: rgba(255, 255, 255, 0.15);
 }
 @media (max-width: 760px) {
   .messages {

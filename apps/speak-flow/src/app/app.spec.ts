@@ -3,6 +3,7 @@ import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { BrowserVoiceService, ChatService } from '@speak-flow/chat-data-access';
 import { of, Subject, throwError } from 'rxjs';
+import { provideMarkdown } from 'ngx-markdown';
 // The route lazy-loads this feature; the app-level tests need the component directly.
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { ChatPageComponent } from '@speak-flow/chat-feature';
@@ -46,6 +47,7 @@ describe('ChatPageComponent', () => {
         { provide: ChatService, useValue: chatService },
         { provide: BrowserVoiceService, useValue: voiceService },
         provideRouter([]),
+        provideMarkdown(),
       ],
     }).compileComponents();
   });

@@ -8,10 +8,12 @@ import {
   viewChild,
 } from '@angular/core';
 import { ChatMessage } from '@speak-flow/chat-models';
+import { MarkdownComponent } from 'ngx-markdown';
 
 @Component({
   selector: 'chat-message-list',
   standalone: true,
+  imports: [MarkdownComponent],
   template: `
     <div
       #messageContainer
@@ -24,7 +26,11 @@ import { ChatMessage } from '@speak-flow/chat-models';
           <span class="message-role">{{
             message.role === 'user' ? 'You' : 'SpeakFlow'
           }}</span>
-          <p>{{ message.text }}</p>
+          <markdown
+            class="message-content"
+            [data]="message.text"
+            (ready)="onMarkdownReady(message.id)"
+          />
         </div>
       }
     </div>
@@ -97,6 +103,11 @@ export class ChatMessageListComponent {
       container.scrollHeight - container.scrollTop - container.clientHeight <
       48;
     if (this.isNearBottom) this.showLatest.set(false);
+  }
+
+  onMarkdownReady(messageId: string): void {
+    if (this.messages().at(-1)?.id === messageId && this.isNearBottom)
+      this.scrollToLatest('auto');
   }
 
   scrollToLatest(behavior: ScrollBehavior = 'smooth'): void {

@@ -26,6 +26,8 @@
     "@angular/ssr": "~22.0.4",
     "better-sqlite3": "^13.0.3",
     "express": "^4.21.2",
+    "marked": "^18.0.9",
+    "ngx-markdown": "^22.0.0",
     "pg": "^8.23.0",
     "rxjs": "~7.8.0"
   },
