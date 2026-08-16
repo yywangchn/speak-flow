@@ -127,6 +127,18 @@ retrieval Recall@3/Precision@3/empty rate, and streaming latency, failures, and
 cancellation behavior. The datasets live in `tools/evals/` and are versioned
 with the AI settings they validate.
 
+To compare CosyVoice voices before integrating cloud speech playback, run:
+
+```sh
+npm run spike:cosyvoice
+```
+
+The spike synthesizes the same English sentence with the configured voice IDs,
+saves MP3 files under the ignored `tmp/cosyvoice-spike/` directory, and reports
+first-audio latency, total latency, character count, and estimated cost. Set
+`COSYVOICE_PRICE_PER_10K_CHARS` to the current console price before treating the
+estimate as meaningful.
+
 ## Project Layout
 
 ```text
