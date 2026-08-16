@@ -30,7 +30,8 @@
     "marked": "^18.0.9",
     "ngx-markdown": "^22.0.0",
     "pg": "^8.23.0",
-    "rxjs": "~7.8.0"
+    "rxjs": "~7.8.0",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@analogjs/vite-plugin-angular": "~2.6.0",
@@ -70,7 +71,6 @@
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.58.0",
     "vite": "7.3.5",
-    "vitest": "~4.1.0",
-    "ws": "^8.21.3"
+    "vitest": "~4.1.0"
   }
 }

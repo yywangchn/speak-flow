@@ -1,9 +1,11 @@
 import '@angular/compiler';
+import type { Response } from 'express';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ReadableStream } from 'node:stream/web';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { AuthenticatedRequest } from './auth-http';
 
 const testDirectory = mkdtempSync(join(tmpdir(), 'speak-flow-server-'));
 process.env['SPEAKFLOW_DATABASE_PATH'] = join(testDirectory, 'test.sqlite');
@@ -15,6 +17,7 @@ process.env['DASHSCOPE_BASE_URL'] = 'https://embedding.example.com';
 let handleChat: (typeof import('./server'))['handleChat'];
 let handleChatStream: (typeof import('./server'))['handleChatStream'];
 let handleHealth: (typeof import('./server'))['handleHealth'];
+let handleSpeech: (typeof import('./server'))['handleSpeech'];
 let memoryStore: typeof import('./memory-store');
 let chatStore: typeof import('./chat-store');
 let deepSeekPrompt = '';
@@ -24,8 +27,96 @@ beforeAll(async () => {
   handleChat = serverModule.handleChat;
   handleChatStream = serverModule.handleChatStream;
   handleHealth = serverModule.handleHealth;
+  handleSpeech = serverModule.handleSpeech;
   memoryStore = await import('./memory-store');
   chatStore = await import('./chat-store');
+});
+
+describe('speech API', () => {
+  it('returns generated MP3 audio for an authenticated user', async () => {
+    const audio = Buffer.from('test-mp3');
+    const synthesize = vi.fn(async () => audio);
+    const setHeader = vi.fn();
+    const send = vi.fn();
+
+    await handleSpeech(
+      {
+        userId: 'speech-user',
+        body: { text: '  Hello there.  ' },
+        on: vi.fn(),
+      } as unknown as AuthenticatedRequest,
+      {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+        setHeader,
+        send,
+      } as unknown as Response,
+      synthesize,
+    );
+
+    expect(synthesize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apiKey: 'test-dashscope-key',
+        text: 'Hello there.',
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(setHeader).toHaveBeenCalledWith('Content-Type', 'audio/mpeg');
+    expect(setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
+    expect(send).toHaveBeenCalledWith(audio);
+  });
+
+  it.each([
+    { userId: undefined, text: 'Hello.', expectedStatus: 401 },
+    { userId: 'speech-user', text: '   ', expectedStatus: 400 },
+    { userId: 'speech-user', text: 'a'.repeat(2001), expectedStatus: 400 },
+  ])(
+    'rejects an invalid speech request with $expectedStatus',
+    async ({ userId, text, expectedStatus }) => {
+      const synthesize = vi.fn();
+      const status = vi.fn().mockReturnThis();
+
+      await handleSpeech(
+        {
+          userId,
+          body: { text },
+          on: vi.fn(),
+        } as unknown as AuthenticatedRequest,
+        { status, json: vi.fn() } as unknown as Response,
+        synthesize,
+      );
+
+      expect(status).toHaveBeenCalledWith(expectedStatus);
+      expect(synthesize).not.toHaveBeenCalled();
+    },
+  );
+
+  it('returns a recoverable error when CosyVoice fails', async () => {
+    const synthesize = vi.fn(async () => {
+      throw new Error('Upstream unavailable');
+    });
+    const status = vi.fn().mockReturnThis();
+    const json = vi.fn();
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    await handleSpeech(
+      {
+        userId: 'speech-user',
+        body: { text: 'Hello.' },
+        on: vi.fn(),
+      } as unknown as AuthenticatedRequest,
+      { status, json } as unknown as Response,
+      synthesize,
+    );
+
+    error.mockRestore();
+    expect(status).toHaveBeenCalledWith(502);
+    expect(json).toHaveBeenCalledWith({
+      error: 'Speech could not be generated.',
+    });
+  });
 });
 
 afterAll(async () => {
