@@ -15,7 +15,11 @@ import {
   ChatStreamEvent,
   VoiceCaptureStatus,
 } from '@speak-flow/chat-models';
-import { BrowserVoiceService, ChatService } from '@speak-flow/chat-data-access';
+import {
+  BrowserVoiceService,
+  ChatService,
+  CloudSpeechService,
+} from '@speak-flow/chat-data-access';
 import {
   ChatMessageListComponent,
   ChatReplyFormComponent,
@@ -32,6 +36,7 @@ import {
 export class ChatPageComponent {
   private readonly chatService = inject(ChatService);
   private readonly voiceService = inject(BrowserVoiceService);
+  private readonly cloudSpeech = inject(CloudSpeechService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private isComposing = false;
@@ -50,7 +55,7 @@ export class ChatPageComponent {
   constructor() {
     this.destroyRef.onDestroy(() => {
       this.voiceService.cancelListening();
-      this.voiceService.cancelSpeech();
+      this.cloudSpeech.cancelSpeech();
     });
     this.chatService
       .loadHistory()
@@ -83,7 +88,7 @@ export class ChatPageComponent {
     const text = this.draft().trim();
     if (!text || this.status().state === 'loading') return;
     this.cancelVoiceCapture();
-    this.voiceService.cancelSpeech();
+    this.cloudSpeech.cancelSpeech();
     if (this.status().state === 'streaming') {
       this.activeStream?.unsubscribe();
       this.status.set({ state: 'cancelled' });
@@ -116,7 +121,7 @@ export class ChatPageComponent {
             this.status.set({ state: 'idle' });
             const completedReply = this.messages().at(-1);
             if (completedReply?.role === 'assistant')
-              this.voiceService.speak(completedReply.text);
+              this.cloudSpeech.speak(completedReply.text);
           }
           if (event.type === 'cancelled')
             this.status.set({ state: 'cancelled' });
@@ -137,7 +142,7 @@ export class ChatPageComponent {
     }
     if (!this.voiceSupported || this.isChatBusy()) return;
 
-    this.voiceService.cancelSpeech();
+    this.cloudSpeech.cancelSpeech();
     this.voiceDraftPrefix = this.draft().trimEnd();
     this.voiceStatus.set({ state: 'listening' });
     this.activeVoiceCapture = this.voiceService
@@ -158,7 +163,9 @@ export class ChatPageComponent {
   }
 
   togglePlayback(): void {
-    this.voiceService.setPlaybackEnabled(!this.playbackEnabled());
+    const enabled = !this.playbackEnabled();
+    this.voiceService.setPlaybackEnabled(enabled);
+    if (!enabled) this.cloudSpeech.cancelSpeech();
   }
 
   onReplyKeydown(event: KeyboardEvent): void {

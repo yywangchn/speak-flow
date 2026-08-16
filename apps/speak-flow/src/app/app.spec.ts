@@ -1,7 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { BrowserVoiceService, ChatService } from '@speak-flow/chat-data-access';
+import {
+  BrowserVoiceService,
+  ChatService,
+  CloudSpeechService,
+} from '@speak-flow/chat-data-access';
 import { of, Subject, throwError } from 'rxjs';
 import { provideMarkdown } from 'ngx-markdown';
 // The route lazy-loads this feature; the app-level tests need the component directly.
@@ -27,6 +31,10 @@ describe('ChatPageComponent', () => {
     speak: vi.fn(),
     cancelSpeech: vi.fn(),
   };
+  const cloudSpeech = {
+    speak: vi.fn(),
+    cancelSpeech: vi.fn(),
+  };
 
   beforeEach(async () => {
     chatService.sendMessage.mockReset();
@@ -40,12 +48,15 @@ describe('ChatPageComponent', () => {
     voiceService.setPlaybackEnabled.mockClear();
     voiceService.speak.mockReset();
     voiceService.cancelSpeech.mockReset();
+    cloudSpeech.speak.mockReset();
+    cloudSpeech.cancelSpeech.mockReset();
     chatService.loadHistory.mockReturnValue(of([]));
     await TestBed.configureTestingModule({
       imports: [ChatPageComponent],
       providers: [
         { provide: ChatService, useValue: chatService },
         { provide: BrowserVoiceService, useValue: voiceService },
+        { provide: CloudSpeechService, useValue: cloudSpeech },
         provideRouter([]),
         provideMarkdown(),
       ],
@@ -83,7 +94,7 @@ describe('ChatPageComponent', () => {
       'That sounds good. What have you been up to?',
     );
     expect(component.status()).toEqual({ state: 'idle' });
-    expect(voiceService.speak).toHaveBeenCalledWith(
+    expect(cloudSpeech.speak).toHaveBeenCalledWith(
       'That sounds good. What have you been up to?',
     );
   });
@@ -104,7 +115,7 @@ describe('ChatPageComponent', () => {
       { id: 'saved-2', role: 'assistant', text: 'Welcome back!' },
     ]);
     expect(component.status()).toEqual({ state: 'idle' });
-    expect(voiceService.speak).not.toHaveBeenCalled();
+    expect(cloudSpeech.speak).not.toHaveBeenCalled();
   });
 
   it('keeps Shift+Enter available for a new line', () => {
@@ -180,7 +191,7 @@ describe('ChatPageComponent', () => {
       state: 'error',
       message: 'The reply could not be generated. Please try again.',
     });
-    expect(voiceService.speak).not.toHaveBeenCalled();
+    expect(cloudSpeech.speak).not.toHaveBeenCalled();
   });
 
   it('appends a final voice transcript to the existing draft', () => {
@@ -261,6 +272,6 @@ describe('ChatPageComponent', () => {
     component.sendMessage();
 
     expect(voiceService.setPlaybackEnabled).toHaveBeenCalledWith(false);
-    expect(voiceService.cancelSpeech).toHaveBeenCalled();
+    expect(cloudSpeech.cancelSpeech).toHaveBeenCalled();
   });
 });
