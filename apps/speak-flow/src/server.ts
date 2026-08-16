@@ -30,7 +30,7 @@ import {
   requireAuth,
   type AuthenticatedRequest,
 } from './auth-http';
-import { synthesizeSpeech } from './cosyvoice-client';
+import { streamSpeech, synthesizeSpeech } from './cosyvoice-client';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
@@ -222,6 +222,10 @@ app.post(
   '/api/speech',
   (req, res, next) => void handleSpeech(req, res).catch(next),
 );
+app.post(
+  '/api/speech/stream',
+  (req, res, next) => void handleSpeechAudioStream(req, res).catch(next),
+);
 
 export async function handleSpeech(
   req: AuthenticatedRequest,
@@ -263,6 +267,70 @@ export async function handleSpeech(
   } catch (error: unknown) {
     if (controller.signal.aborted) return;
     console.error('CosyVoice request failed:', error);
+    res.status(502).json({ error: 'Speech could not be generated.' });
+  }
+}
+
+type SpeechStreamResponse = Pick<Response, 'end' | 'setHeader' | 'status'> & {
+  json(body: unknown): void;
+  write(chunk: Buffer): boolean;
+};
+
+export async function handleSpeechAudioStream(
+  req: AuthenticatedRequest,
+  res: SpeechStreamResponse,
+  stream: typeof streamSpeech = streamSpeech,
+): Promise<void> {
+  if (!req.userId) {
+    res.status(401).json({ error: 'Authentication required.' });
+    return;
+  }
+  const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
+  if (!text || text.length > 2000) {
+    res.status(400).json({ error: 'Text must contain 1 to 2000 characters.' });
+    return;
+  }
+  const apiKey = process.env['DASHSCOPE_API_KEY'];
+  if (!apiKey) {
+    res.status(503).json({ error: 'CosyVoice API key is not configured.' });
+    return;
+  }
+
+  const controller = new AbortController();
+  req.on('aborted', () => controller.abort());
+  let started = false;
+  res.setHeader('Content-Type', 'audio/mpeg');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Accel-Buffering', 'no');
+  try {
+    await stream(
+      {
+        apiKey,
+        text,
+        signal: controller.signal,
+        ...(process.env['COSYVOICE_MODEL']
+          ? { model: process.env['COSYVOICE_MODEL'] }
+          : {}),
+        ...(process.env['COSYVOICE_VOICE']
+          ? { voice: process.env['COSYVOICE_VOICE'] }
+          : {}),
+      },
+      (chunk) => {
+        started = true;
+        res.write(chunk);
+      },
+    );
+    res.end();
+  } catch (error: unknown) {
+    if (controller.signal.aborted) {
+      res.end();
+      return;
+    }
+    console.error('CosyVoice stream failed:', error);
+    if (started) {
+      res.end();
+      return;
+    }
     res.status(502).json({ error: 'Speech could not be generated.' });
   }
 }

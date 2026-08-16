@@ -25,16 +25,25 @@ export type CosyVoiceOptions = {
 export async function synthesizeSpeech(
   options: CosyVoiceOptions,
 ): Promise<Buffer> {
+  const audioChunks: Buffer[] = [];
+  await streamSpeech(options, (chunk) => audioChunks.push(chunk));
+  return Buffer.concat(audioChunks);
+}
+
+export async function streamSpeech(
+  options: CosyVoiceOptions,
+  onAudioChunk: (chunk: Buffer) => void,
+): Promise<void> {
   const taskId = randomUUID().replace(/-/g, '');
   const endpoint = options.endpoint ?? DEFAULT_ENDPOINT;
   const model = options.model ?? DEFAULT_MODEL;
   const voice = options.voice ?? DEFAULT_VOICE;
 
-  return new Promise<Buffer>((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     const socket = new WebSocket(endpoint, {
       headers: { Authorization: `Bearer ${options.apiKey}` },
     });
-    const audioChunks: Buffer[] = [];
+    let receivedAudio = false;
     let settled = false;
     const timeout = setTimeout(() => {
       socket.terminate();
@@ -55,11 +64,11 @@ export async function synthesizeSpeech(
         reject(error);
         return;
       }
-      if (!audioChunks.length) {
+      if (!receivedAudio) {
         reject(new Error('CosyVoice returned no audio.'));
         return;
       }
-      resolve(Buffer.concat(audioChunks));
+      resolve();
     };
 
     if (options.signal?.aborted) {
@@ -98,7 +107,8 @@ export async function synthesizeSpeech(
     socket.on('message', (data: RawData, isBinary: boolean) => {
       try {
         if (isBinary) {
-          audioChunks.push(toBuffer(data));
+          receivedAudio = true;
+          onAudioChunk(toBuffer(data));
           return;
         }
 

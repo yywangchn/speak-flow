@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { ReadableStream } from 'node:stream/web';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { AuthenticatedRequest } from './auth-http';
+import type { CosyVoiceOptions } from './cosyvoice-client';
 
 const testDirectory = mkdtempSync(join(tmpdir(), 'speak-flow-server-'));
 process.env['SPEAKFLOW_DATABASE_PATH'] = join(testDirectory, 'test.sqlite');
@@ -18,6 +19,7 @@ let handleChat: (typeof import('./server'))['handleChat'];
 let handleChatStream: (typeof import('./server'))['handleChatStream'];
 let handleHealth: (typeof import('./server'))['handleHealth'];
 let handleSpeech: (typeof import('./server'))['handleSpeech'];
+let handleSpeechAudioStream: (typeof import('./server'))['handleSpeechAudioStream'];
 let memoryStore: typeof import('./memory-store');
 let chatStore: typeof import('./chat-store');
 let deepSeekPrompt = '';
@@ -28,6 +30,7 @@ beforeAll(async () => {
   handleChatStream = serverModule.handleChatStream;
   handleHealth = serverModule.handleHealth;
   handleSpeech = serverModule.handleSpeech;
+  handleSpeechAudioStream = serverModule.handleSpeechAudioStream;
   memoryStore = await import('./memory-store');
   chatStore = await import('./chat-store');
 });
@@ -116,6 +119,46 @@ describe('speech API', () => {
     expect(json).toHaveBeenCalledWith({
       error: 'Speech could not be generated.',
     });
+  });
+
+  it('forwards CosyVoice audio chunks without waiting for completion', async () => {
+    const writtenChunks: Buffer[] = [];
+    const stream = async (
+      _options: CosyVoiceOptions,
+      onAudioChunk: (chunk: Buffer) => void,
+    ): Promise<void> => {
+      onAudioChunk(Buffer.from('first'));
+      onAudioChunk(Buffer.from('second'));
+    };
+    const end = vi.fn();
+    const setHeader = vi.fn();
+
+    await handleSpeechAudioStream(
+      {
+        userId: 'speech-user',
+        body: { text: 'Hello there.' },
+        on: vi.fn(),
+      } as unknown as AuthenticatedRequest,
+      {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+        setHeader,
+        write: (chunk: Buffer) => {
+          writtenChunks.push(chunk);
+          return true;
+        },
+        end,
+      } as unknown as Parameters<typeof handleSpeechAudioStream>[1],
+      stream,
+    );
+
+    expect(writtenChunks.map((chunk) => chunk.toString())).toEqual([
+      'first',
+      'second',
+    ]);
+    expect(setHeader).toHaveBeenCalledWith('Content-Type', 'audio/mpeg');
+    expect(setHeader).toHaveBeenCalledWith('X-Accel-Buffering', 'no');
+    expect(end).toHaveBeenCalledOnce();
   });
 });
 
