@@ -8,7 +8,7 @@ conversation instead of appearing as lessons or scorecards.
 ## Highlights
 
 - Streaming DeepSeek responses with cancellation and partial-reply persistence
-- Safari voice input and automatic AI reply playback using browser speech APIs
+- Safari voice input and automatic AI reply playback using CosyVoice
 - Session-based authentication with isolated chat history and memories
 - PostgreSQL persistence and pgvector semantic memory retrieval
 - Structured AI memory extraction with sensitive-data filtering
@@ -28,6 +28,7 @@ Angular chat UI
 Express SSR/API
     |-- DeepSeek chat and memory extraction
     |-- DashScope text embeddings
+    |-- CosyVoice speech synthesis
     `-- PostgreSQL + pgvector
           |-- users and sessions
           |-- chat history
@@ -86,10 +87,12 @@ input. SpeakFlow requests microphone permission on first use and places the
 final `en-US` transcript in the message field so it can be checked or edited
 before sending.
 
-Newly completed AI replies are read aloud automatically. The speaker button
-turns playback on or off, stops current speech when muted, and remembers the
-choice in local browser storage. Welcome text and restored history are never
-read aloud.
+Newly completed AI replies are synthesized with `cosyvoice-v3-flash` and the
+`loongluca_v3` voice through an authenticated server endpoint. The speaker
+button turns playback on or off, stops the current request or audio when muted,
+and remembers the choice in local browser storage. Welcome text and restored
+history are never read aloud. If cloud synthesis fails, playback falls back to
+the browser's English voice.
 
 Voice capture uses Safari's browser speech recognition rather than a SpeakFlow
 server endpoint. Availability and recognition quality therefore depend on the
@@ -127,7 +130,7 @@ retrieval Recall@3/Precision@3/empty rate, and streaming latency, failures, and
 cancellation behavior. The datasets live in `tools/evals/` and are versioned
 with the AI settings they validate.
 
-To compare CosyVoice voices before integrating cloud speech playback, run:
+To compare other CosyVoice voices, run:
 
 ```sh
 npm run spike:cosyvoice
@@ -147,7 +150,7 @@ libs/chat/                Chat models, data access, UI, and feature orchestratio
 libs/memory/              Shared memory models and client data access
 tools/database/           SQLite-to-PostgreSQL import utility
 tools/evals/              Offline AI evaluation datasets and runners
-tools/spikes/             Isolated embedding experiment
+tools/spikes/             Isolated embedding and speech experiments
 ```
 
 ## Data Migration
