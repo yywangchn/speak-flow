@@ -32,6 +32,7 @@ describe('ChatPageComponent', () => {
     cancelSpeech: vi.fn(),
   };
   const cloudSpeech = {
+    preparePlayback: vi.fn(),
     speak: vi.fn(),
     cancelSpeech: vi.fn(),
   };
@@ -49,6 +50,7 @@ describe('ChatPageComponent', () => {
     voiceService.speak.mockReset();
     voiceService.cancelSpeech.mockReset();
     cloudSpeech.speak.mockReset();
+    cloudSpeech.preparePlayback.mockReset();
     cloudSpeech.cancelSpeech.mockReset();
     chatService.loadHistory.mockReturnValue(of([]));
     await TestBed.configureTestingModule({

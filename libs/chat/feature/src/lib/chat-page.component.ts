@@ -89,6 +89,7 @@ export class ChatPageComponent {
     if (!text || this.status().state === 'loading') return;
     this.cancelVoiceCapture();
     this.cloudSpeech.cancelSpeech();
+    this.cloudSpeech.preparePlayback();
     if (this.status().state === 'streaming') {
       this.activeStream?.unsubscribe();
       this.status.set({ state: 'cancelled' });

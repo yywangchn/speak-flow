@@ -4,7 +4,11 @@ import { inject, Injectable, InjectionToken, PLATFORM_ID } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { BrowserVoiceService } from './browser-voice.service';
 
+const SILENT_AUDIO_URL =
+  'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAACAgICA';
+
 export type CloudAudio = {
+  src: string;
   onended: ((event: Event) => void) | null;
   onerror: ((event: Event) => void) | null;
   pause(): void;
@@ -40,10 +44,31 @@ export class CloudSpeechService {
   private activeRequest?: Subscription;
   private activeAudio?: CloudAudio;
   private activeObjectUrl?: string;
+  private preparedAudio?: CloudAudio;
+
+  preparePlayback(): void {
+    if (
+      !this.browser ||
+      !this.nativeVoice.playbackEnabled() ||
+      this.preparedAudio
+    )
+      return;
+
+    const audio = this.browser.createAudio(SILENT_AUDIO_URL);
+    this.preparedAudio = audio;
+    void audio.play().then(
+      () => {
+        if (this.preparedAudio === audio) audio.pause();
+      },
+      () => {
+        if (this.preparedAudio === audio) this.preparedAudio = undefined;
+      },
+    );
+  }
 
   speak(text: string): void {
     const normalizedText = text.trim();
-    this.cancelSpeech();
+    this.cancelActiveSpeech();
     if (!normalizedText || !this.nativeVoice.playbackEnabled()) return;
 
     this.activeRequest = this.http
@@ -58,6 +83,14 @@ export class CloudSpeechService {
   }
 
   cancelSpeech(): void {
+    this.cancelActiveSpeech();
+    if (this.preparedAudio) {
+      this.preparedAudio.pause();
+      this.preparedAudio = undefined;
+    }
+  }
+
+  private cancelActiveSpeech(): void {
     this.activeRequest?.unsubscribe();
     this.activeRequest = undefined;
     this.nativeVoice.cancelSpeech();
@@ -69,7 +102,9 @@ export class CloudSpeechService {
     if (!this.browser || !this.nativeVoice.playbackEnabled()) return;
 
     const objectUrl = this.browser.createObjectUrl(blob);
-    const audio = this.browser.createAudio(objectUrl);
+    const audio = this.preparedAudio ?? this.browser.createAudio(objectUrl);
+    this.preparedAudio = undefined;
+    audio.src = objectUrl;
     this.activeObjectUrl = objectUrl;
     this.activeAudio = audio;
     audio.onended = () => this.releaseAudio(audio);

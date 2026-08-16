@@ -30,6 +30,7 @@ describe('CloudSpeechService', () => {
     nativeVoice.speak.mockReset();
     nativeVoice.cancelSpeech.mockReset();
     audio = {
+      src: '',
       onended: null,
       onerror: null,
       pause: vi.fn(),
@@ -68,6 +69,19 @@ describe('CloudSpeechService', () => {
     audio.onended?.(new Event('ended'));
     expect(audio.pause).toHaveBeenCalledOnce();
     expect(browser.revokeObjectUrl).toHaveBeenCalledWith('blob:speech');
+  });
+
+  it('reuses audio prepared during a user gesture', async () => {
+    service.preparePlayback();
+    await Promise.resolve();
+    service.speak('Hello there.');
+    http
+      .expectOne('/api/speech')
+      .flush(new Blob(['mp3'], { type: 'audio/mpeg' }));
+
+    expect(browser.createAudio).toHaveBeenCalledOnce();
+    expect(audio.src).toBe('blob:speech');
+    expect(audio.play).toHaveBeenCalledTimes(2);
   });
 
   it('cancels an active speech request', () => {
