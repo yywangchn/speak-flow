@@ -16,6 +16,16 @@ conversation instead of appearing as lessons or scorecards.
 - Offline evaluations for memory extraction, retrieval quality, and streaming
 - Angular SSR, production container, health check, and database migrations
 
+## Portfolio Focus
+
+SpeakFlow demonstrates an end-to-end AI application rather than a single model
+call: authenticated user isolation, durable relational data, semantic retrieval,
+structured extraction with validation, streaming UX, and browser-to-cloud voice
+integration all have explicit failure and cancellation paths.
+
+The technical decisions, quality checks, and a 90-second walkthrough are in
+[the portfolio demo guide](docs/portfolio-demo.md).
+
 ## Architecture
 
 The Angular application is split into domain libraries under `libs/`. The app
