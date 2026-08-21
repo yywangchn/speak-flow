@@ -2,9 +2,9 @@ import { EMBEDDING_MODEL } from './embedding-client';
 import { MEMORY_EXTRACTION_SYSTEM_PROMPT } from './memory-extraction';
 
 export const AI_SETTINGS = {
-  version: '2026-08-15.1',
+  version: '2026-08-21.1',
   chat: {
-    version: 'chat-v2',
+    version: 'chat-v3',
     model: 'deepseek-chat',
     temperature: 0.8,
     systemPrompt:
@@ -17,9 +17,9 @@ export const AI_SETTINGS = {
     systemPrompt: MEMORY_EXTRACTION_SYSTEM_PROMPT,
   },
   memoryRetrieval: {
-    version: 'memory-retrieval-v1',
+    version: 'memory-retrieval-v2',
     embeddingModel: EMBEDDING_MODEL,
-    topK: 3,
-    minimumSimilarity: 0.35,
+    topK: 2,
+    minimumSimilarity: 0.55,
   },
 } as const;

@@ -454,8 +454,8 @@ async function buildPromptMessages(
   latestUserMessage: string,
   messages: readonly ChatMessage[],
 ): Promise<Array<{ role: 'system' | ChatMessage['role']; content: string }>> {
-  let memories = await listMemories(userId);
-  const storedMemoryCount = memories.length;
+  const storedMemoryCount = (await listMemories(userId)).length;
+  let memories: Awaited<ReturnType<typeof listMemories>> = [];
   const embeddingApiKey = process.env['DASHSCOPE_API_KEY'];
   const embeddingBaseUrl = process.env['DASHSCOPE_BASE_URL'];
   if (embeddingApiKey && embeddingBaseUrl) {
@@ -501,8 +501,8 @@ async function buildPromptMessages(
     });
   }
   const memoryContext = memories.length
-    ? `Known things about the user:\n${memories.map(({ content }) => `- ${content}`).join('\n')}`
-    : 'No saved memories about the user yet.';
+    ? `Optional background memories:\n${memories.map(({ content }) => `- ${content}`).join('\n')}\nUse a memory only when it is directly relevant to the user's latest message. Do not mention memories merely to demonstrate familiarity, and never force personal details into an unrelated topic. If none of these memories is relevant, ignore them.`
+    : 'No relevant memories are available for this message.';
   return [
     {
       role: 'system',

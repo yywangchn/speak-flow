@@ -285,6 +285,69 @@ describe('chat API memory retrieval', () => {
     expect(deepSeekPrompt).not.toContain('The user prefers pizza.');
   });
 
+  it('does not inject all memories when semantic retrieval fails', async () => {
+    const userId = 'retrieval-fallback-test-user';
+    memoryStore.saveExtractedMemories(userId, [
+      {
+        key: 'preference.pet',
+        content: 'The user has a cat named Mimi.',
+        category: 'preference',
+        confidence: 0.95,
+      },
+    ]);
+
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input, init) => {
+        if (input.toString() === 'https://embedding.example.com/embeddings') {
+          return new Response('Unavailable', { status: 503 });
+        }
+        const body = JSON.parse(String(init?.body)) as {
+          temperature?: number;
+          messages?: Array<{ content?: string }>;
+        };
+        if (body.temperature === 0.8) {
+          deepSeekPrompt = body.messages?.[0]?.content ?? '';
+          return new Response(
+            JSON.stringify({
+              choices: [{ message: { content: 'Let us discuss that.' } }],
+            }),
+            { status: 200 },
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: '{"memories":[]}' } }],
+          }),
+          { status: 200 },
+        );
+      });
+    const warnMock = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+
+    await handleChat(
+      {
+        userId,
+        body: { messages: [{ role: 'user', content: 'Tell me about space.' }] },
+      },
+      {
+        status() {
+          return this;
+        },
+        json() {
+          return undefined;
+        },
+      },
+    );
+
+    fetchMock.mockRestore();
+    warnMock.mockRestore();
+
+    expect(deepSeekPrompt).toContain('No relevant memories');
+    expect(deepSeekPrompt).not.toContain('cat named Mimi');
+  });
+
   it('forwards DeepSeek SSE deltas and saves the completed reply', async () => {
     const userId = 'stream-test-user';
     const fetchMock = vi
