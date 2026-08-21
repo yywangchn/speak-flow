@@ -169,6 +169,11 @@ export class ChatPageComponent {
     if (!enabled) this.cloudSpeech.cancelSpeech();
   }
 
+  playMessage(text: string): void {
+    this.cloudSpeech.preparePlayback();
+    this.cloudSpeech.speak(text);
+  }
+
   onReplyKeydown(event: KeyboardEvent): void {
     if (
       event.key !== 'Enter' ||

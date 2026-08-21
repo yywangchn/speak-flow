@@ -97,8 +97,8 @@ input. SpeakFlow requests microphone permission on first use and places the
 final `en-US` transcript in the message field so it can be checked or edited
 before sending.
 
-Newly completed AI replies are synthesized with `cosyvoice-v3-flash` and the
-`loongluca_v3` voice through an authenticated server endpoint. The speaker
+Newly completed AI replies are synthesized with `qwen3-tts-vc-2026-01-22` and the
+custom Qwen voice through an authenticated server endpoint. The speaker
 button turns playback on or off, stops the current request or audio when muted,
 and remembers the choice in local browser storage. Welcome text and restored
 history are never read aloud. If cloud synthesis fails, playback falls back to

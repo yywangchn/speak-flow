@@ -22,6 +22,12 @@ describe('ChatMessageListComponent', () => {
     ]);
 
     fixture.detectChanges();
+    (
+      fixture.nativeElement.querySelector(
+        '[aria-label="Show reply text"]',
+      ) as HTMLButtonElement
+    ).click();
+    fixture.detectChanges();
     const markdown = fixture.debugElement.query(By.directive(MarkdownComponent))
       .componentInstance as MarkdownComponent;
     await markdown.render('**Upwork** <script>window.hacked = true</script>');
@@ -33,6 +39,53 @@ describe('ChatMessageListComponent', () => {
     expect(content.querySelector('strong')?.textContent).toBe('Upwork');
     expect(content.textContent).not.toContain('**');
     expect(content.querySelector('script')).toBeNull();
+  });
+
+  it('hides assistant text until the user chooses to show it', () => {
+    const fixture = TestBed.createComponent(ChatMessageListComponent);
+    fixture.componentRef.setInput('messages', [
+      { id: 'assistant-1', role: 'assistant', text: 'A private reply.' },
+    ]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.message-content')).toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('.hidden-reply')?.textContent,
+    ).toContain('Reply hidden');
+
+    (
+      fixture.nativeElement.querySelector(
+        '[aria-label="Show reply text"]',
+      ) as HTMLButtonElement
+    ).click();
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('.message-content'),
+    ).not.toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('[aria-label="Hide reply text"]'),
+    ).not.toBeNull();
+  });
+
+  it('emits the selected assistant reply when playback is requested', () => {
+    const fixture = TestBed.createComponent(ChatMessageListComponent);
+    const played: string[] = [];
+    fixture.componentInstance.playRequested.subscribe((text) =>
+      played.push(text),
+    );
+    fixture.componentRef.setInput('messages', [
+      { id: 'assistant-1', role: 'assistant', text: 'Play this reply.' },
+    ]);
+    fixture.detectChanges();
+
+    (
+      fixture.nativeElement.querySelector(
+        '[aria-label="Play reply aloud"]',
+      ) as HTMLButtonElement
+    ).click();
+
+    expect(played).toEqual(['Play this reply.']);
   });
 
   it('keeps following text added to the active streaming message', () => {

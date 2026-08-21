@@ -4,6 +4,7 @@ import {
   Component,
   ElementRef,
   input,
+  output,
   signal,
   viewChild,
 } from '@angular/core';
@@ -23,14 +24,49 @@ import { MarkdownComponent } from 'ngx-markdown';
     >
       @for (message of messages(); track message.id) {
         <div class="message" [class.user-message]="message.role === 'user'">
-          <span class="message-role">{{
-            message.role === 'user' ? 'You' : 'SpeakFlow'
-          }}</span>
-          <markdown
-            class="message-content"
-            [data]="message.text"
-            (ready)="onMarkdownReady(message.id)"
-          />
+          <div class="message-heading">
+            <span class="message-role">{{
+              message.role === 'user' ? 'You' : 'SpeakFlow'
+            }}</span>
+            @if (message.role === 'assistant') {
+              <div class="message-actions">
+                <button
+                  class="message-action"
+                  type="button"
+                  [attr.aria-expanded]="isExpanded(message.id)"
+                  [attr.aria-label]="
+                    isExpanded(message.id)
+                      ? 'Hide reply text'
+                      : 'Show reply text'
+                  "
+                  (click)="toggleExpanded(message.id)"
+                >
+                  {{ isExpanded(message.id) ? 'Hide text' : 'Show text' }}
+                </button>
+                <button
+                  class="message-action play-action"
+                  type="button"
+                  [attr.aria-label]="'Play reply aloud'"
+                  title="Play reply aloud"
+                  (click)="playRequested.emit(message.text)"
+                >
+                  <span aria-hidden="true">&#9654;</span>
+                  Play
+                </button>
+              </div>
+            }
+          </div>
+          @if (message.role === 'user' || isExpanded(message.id)) {
+            <markdown
+              class="message-content"
+              [data]="message.text"
+              (ready)="onMarkdownReady(message.id)"
+            />
+          } @else {
+            <div class="hidden-reply" aria-label="Reply text hidden">
+              Reply hidden
+            </div>
+          }
         </div>
       }
     </div>
@@ -58,7 +94,22 @@ export class ChatMessageListComponent {
   private isNearBottom = true;
 
   readonly messages = input<readonly ChatMessage[]>([]);
+  readonly playRequested = output<string>();
   readonly showLatest = signal(false);
+  private readonly expandedMessageIds = signal<ReadonlySet<string>>(new Set());
+
+  isExpanded(messageId: string): boolean {
+    return this.expandedMessageIds().has(messageId);
+  }
+
+  toggleExpanded(messageId: string): void {
+    this.expandedMessageIds.update((expanded) => {
+      const next = new Set(expanded);
+      if (next.has(messageId)) next.delete(messageId);
+      else next.add(messageId);
+      return next;
+    });
+  }
 
   constructor() {
     afterRenderEffect(() => {
