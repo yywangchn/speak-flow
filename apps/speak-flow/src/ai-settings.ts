@@ -19,7 +19,7 @@ export const AI_SETTINGS = {
   memoryRetrieval: {
     version: 'memory-retrieval-v2',
     embeddingModel: EMBEDDING_MODEL,
-    topK: 2,
-    minimumSimilarity: 0.55,
+    topK: 1,
+    minimumSimilarity: 0.7,
   },
 } as const;

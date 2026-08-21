@@ -501,7 +501,7 @@ async function buildPromptMessages(
     });
   }
   const memoryContext = memories.length
-    ? `Optional background memories:\n${memories.map(({ content }) => `- ${content}`).join('\n')}\nUse a memory only when it is directly relevant to the user's latest message. Do not mention memories merely to demonstrate familiarity, and never force personal details into an unrelated topic. If none of these memories is relevant, ignore them.`
+    ? `Optional background memory:\n${memories.map(({ content }) => `- ${content}`).join('\n')}\nUse it only when the user's latest message clearly concerns this topic or explicitly asks about it. Never introduce the memory topic yourself, never mention it to demonstrate familiarity, and never force it into an unrelated reply. If the topic is not directly relevant, ignore this memory completely.`
     : 'No relevant memories are available for this message.';
   return [
     {
