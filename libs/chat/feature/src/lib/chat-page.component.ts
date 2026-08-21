@@ -135,12 +135,8 @@ export class ChatPageComponent {
       });
   }
 
-  toggleVoiceCapture(): void {
-    if (this.voiceStatus().state === 'listening') {
-      this.voiceStatus.set({ state: 'processing' });
-      this.voiceService.stopListening();
-      return;
-    }
+  startVoiceCapture(): void {
+    if (this.voiceStatus().state === 'listening') return;
     if (!this.voiceSupported || this.isChatBusy()) return;
 
     this.cloudSpeech.cancelSpeech();
@@ -161,6 +157,12 @@ export class ChatPageComponent {
           }),
         complete: () => this.voiceStatus.set({ state: 'idle' }),
       });
+  }
+
+  stopVoiceCapture(): void {
+    if (this.voiceStatus().state !== 'listening') return;
+    this.voiceStatus.set({ state: 'processing' });
+    this.voiceService.stopListening();
   }
 
   togglePlayback(): void {
@@ -211,7 +213,7 @@ export class ChatPageComponent {
     );
   }
 
-  private cancelVoiceCapture(): void {
+  cancelVoiceCapture(): void {
     if (
       this.voiceStatus().state !== 'listening' &&
       this.voiceStatus().state !== 'processing'

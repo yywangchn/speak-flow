@@ -64,14 +64,75 @@ describe('BrowserVoiceService', () => {
     expect(service.recognitionSupported).toBe(true);
     expect(recognition).toMatchObject({
       lang: 'en-US',
-      continuous: false,
+      continuous: true,
       interimResults: true,
     });
-    expect(recognition.start).toHaveBeenCalledOnce();
+    expect(recognition.start).toHaveBeenCalledTimes(2);
     expect(transcripts).toEqual([
       { text: 'Hello', isFinal: false },
       { text: 'Hello there', isFinal: true },
     ]);
+  });
+
+  it('restarts unexpected endings and keeps the transcript while held', () => {
+    const sessions: Array<{
+      callbacks: RecognitionCallbacks;
+      recognition: {
+        start: ReturnType<typeof vi.fn>;
+        stop: ReturnType<typeof vi.fn>;
+      };
+    }> = [];
+    const service = createService({
+      SpeechRecognition: class {
+        lang = '';
+        continuous = false;
+        interimResults = false;
+        start = vi.fn();
+        stop = vi.fn();
+        abort = vi.fn();
+        private readonly callbacks: RecognitionCallbacks = {};
+        constructor() {
+          sessions.push({ callbacks: this.callbacks, recognition: this });
+        }
+        set onresult(value: RecognitionCallbacks['result'] | null) {
+          this.callbacks.result = value ?? undefined;
+        }
+        set onerror(value: RecognitionCallbacks['error'] | null) {
+          this.callbacks.error = value ?? undefined;
+        }
+        set onend(value: RecognitionCallbacks['end'] | null) {
+          this.callbacks.end = value ?? undefined;
+        }
+      },
+    });
+    const transcripts: string[] = [];
+    let completed = false;
+
+    service.listen().subscribe({
+      next: ({ text }) => transcripts.push(text),
+      complete: () => (completed = true),
+    });
+    const firstSession = sessions.at(0);
+    if (!firstSession) throw new Error('Recognition did not start.');
+    firstSession.callbacks.result?.({
+      results: [{ isFinal: true, 0: { transcript: 'Hello' } }],
+    });
+    firstSession.callbacks.end?.();
+    const secondSession = sessions.at(1);
+    if (!secondSession) throw new Error('Recognition did not restart.');
+    secondSession.callbacks.result?.({
+      results: [{ isFinal: false, 0: { transcript: 'how are you' } }],
+    });
+
+    expect(sessions).toHaveLength(2);
+    expect(transcripts).toEqual(['Hello', 'Hello how are you']);
+
+    service.stopListening();
+    secondSession.callbacks.end?.();
+
+    expect(secondSession.recognition.stop).toHaveBeenCalledOnce();
+    expect(sessions).toHaveLength(2);
+    expect(completed).toBe(true);
   });
 
   it('stops recognition and reports microphone permission errors', () => {

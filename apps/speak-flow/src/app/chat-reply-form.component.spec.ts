@@ -16,14 +16,15 @@ describe('ChatReplyFormComponent', () => {
     fixture.detectChanges();
 
     expect(
-      fixture.nativeElement.querySelector('[aria-label="Start voice input"]'),
+      fixture.nativeElement.querySelector('[aria-label="Hold to speak"]'),
     ).toBeNull();
     expect(
       fixture.nativeElement.querySelector('[aria-label="Mute AI voice"]'),
     ).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.voice-hint')).toBeNull();
   });
 
-  it('exposes accessible voice controls and the recording error', () => {
+  it('keeps voice controls available after a recording error', () => {
     fixture.componentRef.setInput('voiceSupported', true);
     fixture.componentRef.setInput('voiceStatus', {
       state: 'error',
@@ -33,13 +34,14 @@ describe('ChatReplyFormComponent', () => {
     fixture.detectChanges();
 
     expect(
-      fixture.nativeElement.querySelector('[aria-label="Start voice input"]'),
+      fixture.nativeElement.querySelector('[aria-label="Hold to speak"]'),
     ).not.toBeNull();
     expect(
       fixture.nativeElement.querySelector('[aria-label="Enable AI voice"]'),
     ).not.toBeNull();
     expect(
-      fixture.nativeElement.querySelector('[role="alert"]').textContent,
-    ).toContain('Microphone access is required');
+      fixture.nativeElement.querySelector('.voice-hint')?.textContent,
+    ).toContain('Hold the mic button to speak');
+    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
   });
 });

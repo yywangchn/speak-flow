@@ -1,6 +1,14 @@
 .composer {
-  padding: 18px 20px 20px;
+  padding: 14px 20px 8px;
   border-top: 1px solid #e8ede9;
+  box-sizing: border-box;
+}
+.voice-hint {
+  margin: 3px 0 0;
+  color: #7b8b82;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  text-align: right;
 }
 .reply-form {
   display: flex;
@@ -31,6 +39,16 @@ textarea {
   color: inherit;
   font: inherit;
   line-height: 1.45;
+}
+textarea {
+  order: 1;
+}
+.send-button {
+  order: 2;
+}
+.voice-button,
+.audio-button {
+  order: 3;
 }
 textarea:focus {
   outline: 2px solid #b9dbc9;
@@ -70,6 +88,10 @@ button:disabled {
   border-color: #89ad9b;
   color: #1f6b52;
 }
+.voice-button {
+  touch-action: none;
+  user-select: none;
+}
 .icon-button.active {
   border-color: #1f6b52;
   background: #e5f3ec;
@@ -87,15 +109,9 @@ button:disabled {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.voice-error {
-  margin: 8px 0 0 108px;
-  color: #a23a32;
-  font-size: 0.8rem;
-  line-height: 1.35;
-}
 @media (max-width: 760px) {
   .composer {
-    padding: 14px 16px 18px;
+    padding: 12px 16px 6px;
   }
   .reply-form {
     gap: 8px;
@@ -103,8 +119,5 @@ button:disabled {
   .icon-button {
     flex-basis: 40px;
     width: 40px;
-  }
-  .voice-error {
-    margin-left: 96px;
   }
 }

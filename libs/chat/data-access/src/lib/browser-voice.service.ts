@@ -66,6 +66,7 @@ export const VOICE_BROWSER_WINDOW =
 export class BrowserVoiceService {
   private readonly browserWindow = inject(VOICE_BROWSER_WINDOW);
   private activeRecognition?: SpeechRecognitionLike;
+  private stopRecognitionContinuation?: () => void;
 
   readonly recognitionSupported = Boolean(this.recognitionConstructor);
   readonly playbackEnabled = signal(this.readPlaybackPreference());
@@ -78,51 +79,80 @@ export class BrowserVoiceService {
         return;
       }
 
+      this.stopRecognitionContinuation?.();
       this.activeRecognition?.abort();
-      const recognition = new Recognition();
       let finished = false;
-      this.activeRecognition = recognition;
-      recognition.lang = 'en-US';
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.onresult = (event) => {
-        const results = Array.from(event.results);
-        const text = results
-          .map((result) => result[0]?.transcript?.trim() ?? '')
-          .filter(Boolean)
-          .join(' ');
-        if (text)
-          subscriber.next({
-            text,
-            isFinal: results.every((result) => result.isFinal),
-          });
+      let shouldContinue = true;
+      let committedText = '';
+      let latestSessionText = '';
+      const stopContinuation = (): void => {
+        shouldContinue = false;
       };
-      recognition.onerror = (event) => {
-        finished = true;
-        this.clearRecognition(recognition);
-        subscriber.error(new Error(toRecognitionErrorMessage(event.error)));
+      this.stopRecognitionContinuation = stopContinuation;
+
+      const startRecognition = (): void => {
+        if (!shouldContinue || finished) return;
+        const recognition = new Recognition();
+        latestSessionText = '';
+        this.activeRecognition = recognition;
+        recognition.lang = 'en-US';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.onresult = (event) => {
+          const results = Array.from(event.results);
+          latestSessionText = results
+            .map((result) => result[0]?.transcript?.trim() ?? '')
+            .filter(Boolean)
+            .join(' ');
+          const text = joinTranscript(committedText, latestSessionText);
+          if (text)
+            subscriber.next({
+              text,
+              isFinal: results.every((result) => result.isFinal),
+            });
+        };
+        recognition.onerror = (event) => {
+          if (event.error === 'no-speech' && shouldContinue) return;
+          shouldContinue = false;
+          finished = true;
+          this.clearRecognition(recognition);
+          subscriber.error(new Error(toRecognitionErrorMessage(event.error)));
+        };
+        recognition.onend = () => {
+          this.clearRecognition(recognition);
+          if (shouldContinue) {
+            committedText = joinTranscript(committedText, latestSessionText);
+            startRecognition();
+            return;
+          }
+          finished = true;
+          subscriber.complete();
+        };
+        recognition.start();
       };
-      recognition.onend = () => {
-        finished = true;
-        this.clearRecognition(recognition);
-        subscriber.complete();
-      };
-      recognition.start();
+      startRecognition();
 
       return () => {
-        if (!finished) recognition.abort();
-        this.clearRecognition(recognition);
+        shouldContinue = false;
+        if (!finished) this.activeRecognition?.abort();
+        this.activeRecognition = undefined;
+        if (this.stopRecognitionContinuation === stopContinuation)
+          this.stopRecognitionContinuation = undefined;
       };
     });
   }
 
   stopListening(): void {
+    // The active recognition's onend handler completes the observable.
+    this.stopRecognitionContinuation?.();
     this.activeRecognition?.stop();
   }
 
   cancelListening(): void {
+    this.stopRecognitionContinuation?.();
     this.activeRecognition?.abort();
     this.activeRecognition = undefined;
+    this.stopRecognitionContinuation = undefined;
   }
 
   setPlaybackEnabled(enabled: boolean): void {
@@ -190,4 +220,8 @@ function toRecognitionErrorMessage(error?: string): string {
   if (error === 'audio-capture') return 'No microphone is available.';
   if (error === 'network') return 'Speech recognition is unavailable.';
   return 'Your speech could not be recognized. Please try again.';
+}
+
+function joinTranscript(prefix: string, transcript: string): string {
+  return [prefix.trim(), transcript.trim()].filter(Boolean).join(' ');
 }

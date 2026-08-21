@@ -16,21 +16,25 @@ import { ChatStatus, VoiceCaptureStatus } from '@speak-flow/chat-models';
       <form class="reply-form" (ngSubmit)="submitted.emit()">
         @if (voiceSupported()) {
           <button
-            class="icon-button"
+            class="icon-button voice-button"
             type="button"
             [class.active]="voiceStatus().state === 'listening'"
             [disabled]="voiceDisabled()"
             [attr.aria-label]="
               voiceStatus().state === 'listening'
-                ? 'Stop voice input'
-                : 'Start voice input'
+                ? 'Release to stop voice input'
+                : 'Hold to speak'
             "
             [title]="
               voiceStatus().state === 'listening'
-                ? 'Stop voice input'
-                : 'Start voice input'
+                ? 'Release to stop voice input'
+                : 'Hold to speak'
             "
-            (click)="voiceToggled.emit()"
+            (pointerdown)="startVoiceCapture($event)"
+            (pointerup)="stopVoiceCapture($event)"
+            (pointercancel)="cancelVoiceCapture()"
+            (keydown)="startVoiceCaptureFromKeyboard($event)"
+            (keyup)="stopVoiceCaptureFromKeyboard($event)"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
@@ -39,7 +43,7 @@ import { ChatStatus, VoiceCaptureStatus } from '@speak-flow/chat-models';
           </button>
         }
         <button
-          class="icon-button"
+          class="icon-button audio-button"
           type="button"
           [class.muted]="!playbackEnabled()"
           [attr.aria-pressed]="playbackEnabled()"
@@ -93,12 +97,8 @@ import { ChatStatus, VoiceCaptureStatus } from '@speak-flow/chat-models';
           }}
         </button>
       </form>
-      @if (voiceStatus(); as currentVoiceStatus) {
-        @if (currentVoiceStatus.state === 'error') {
-          <p class="voice-error" role="alert">
-            {{ currentVoiceStatus.message }}
-          </p>
-        }
+      @if (voiceSupported()) {
+        <p class="voice-hint">Hold the mic button to speak</p>
       }
     </div>
   `,
@@ -113,7 +113,9 @@ export class ChatReplyFormComponent {
   readonly playbackEnabled = input(true);
   readonly draftChange = output<string>();
   readonly submitted = output<void>();
-  readonly voiceToggled = output<void>();
+  readonly voiceCaptureStarted = output<void>();
+  readonly voiceCaptureStopped = output<void>();
+  readonly voiceCaptureCancelled = output<void>();
   readonly playbackToggled = output<void>();
   readonly keydown = output<KeyboardEvent>();
   readonly compositionStart = output<void>();
@@ -128,4 +130,38 @@ export class ChatReplyFormComponent {
       state === 'streaming'
     );
   }
+
+  startVoiceCapture(event: PointerEvent): void {
+    if (this.voiceDisabled() || event.button !== 0) return;
+    event.preventDefault();
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    this.voiceCaptureStarted.emit();
+  }
+
+  stopVoiceCapture(event: PointerEvent): void {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    this.voiceCaptureStopped.emit();
+  }
+
+  cancelVoiceCapture(): void {
+    this.voiceCaptureCancelled.emit();
+  }
+
+  startVoiceCaptureFromKeyboard(event: KeyboardEvent): void {
+    if (!isVoiceActivationKey(event) || event.repeat || this.voiceDisabled())
+      return;
+    event.preventDefault();
+    this.voiceCaptureStarted.emit();
+  }
+
+  stopVoiceCaptureFromKeyboard(event: KeyboardEvent): void {
+    if (!isVoiceActivationKey(event)) return;
+    event.preventDefault();
+    this.voiceCaptureStopped.emit();
+  }
+}
+
+function isVoiceActivationKey(event: KeyboardEvent): boolean {
+  return event.key === ' ' || event.key === 'Enter';
 }

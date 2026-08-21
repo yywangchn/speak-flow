@@ -12,7 +12,10 @@ export default defineConfig(() => ({
     watch: false,
     globals: true,
     environment: 'jsdom',
-    include: ['src/**/*.{test,spec}.ts'],
+    include: [
+      'src/**/*.{test,spec}.ts',
+      '../../libs/chat/data-access/src/**/*.{test,spec}.ts',
+    ],
     setupFiles: ['src/test-setup.ts'],
     reporters: ['default'],
   },

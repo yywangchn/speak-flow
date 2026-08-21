@@ -204,7 +204,7 @@ describe('ChatPageComponent', () => {
       TestBed.createComponent(ChatPageComponent).componentInstance;
     component.draft.set('Hello,');
 
-    component.toggleVoiceCapture();
+    component.startVoiceCapture();
 
     expect(component.draft()).toBe('Hello, how are you');
     expect(component.voiceStatus()).toEqual({ state: 'idle' });
@@ -217,8 +217,8 @@ describe('ChatPageComponent', () => {
     const component =
       TestBed.createComponent(ChatPageComponent).componentInstance;
 
-    component.toggleVoiceCapture();
-    component.toggleVoiceCapture();
+    component.startVoiceCapture();
+    component.stopVoiceCapture();
 
     expect(voiceService.stopListening).toHaveBeenCalledOnce();
     expect(component.voiceStatus()).toEqual({ state: 'processing' });
@@ -235,7 +235,7 @@ describe('ChatPageComponent', () => {
       TestBed.createComponent(ChatPageComponent).componentInstance;
     component.draft.set('Before');
 
-    component.toggleVoiceCapture();
+    component.startVoiceCapture();
     transcript.next({ text: 'Hello', isFinal: false });
     expect(component.draft()).toBe('Before Hello');
     transcript.next({ text: 'Hello how are you', isFinal: false });
@@ -253,7 +253,7 @@ describe('ChatPageComponent', () => {
     const component =
       TestBed.createComponent(ChatPageComponent).componentInstance;
 
-    component.toggleVoiceCapture();
+    component.startVoiceCapture();
 
     expect(component.voiceStatus()).toEqual({
       state: 'error',
