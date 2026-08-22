@@ -358,6 +358,8 @@ export async function handleChatStream(
   }
 
   const latestUserMessage = messages.at(-1)?.content ?? '';
+  const previousMessages = await listRecentMessages(userId, 2);
+  const previousMessage = previousMessages.at(-1);
   await saveChatMessage(userId, 'user', latestUserMessage);
   const controller = new AbortController();
   let reply = '';
@@ -366,6 +368,7 @@ export async function handleChatStream(
     userId,
     latestUserMessage,
     messages,
+    previousMessage?.createdAt,
   );
   res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -453,6 +456,7 @@ async function buildPromptMessages(
   userId: string,
   latestUserMessage: string,
   messages: readonly ChatMessage[],
+  previousMessageAt?: string,
 ): Promise<Array<{ role: 'system' | ChatMessage['role']; content: string }>> {
   const storedMemoryCount = (await listMemories(userId)).length;
   let memories: Awaited<ReturnType<typeof listMemories>> = [];
@@ -471,7 +475,9 @@ async function buildPromptMessages(
           queryVector,
           MEMORY_RETRIEVAL_OPTIONS,
         );
-        memories = relevantMemories;
+        memories = relevantMemories.filter((memory) =>
+          isMemoryExplicitlyAllowed(memory, latestUserMessage),
+        );
         console.info('Memory retrieval completed', {
           userId,
           storedMemoryCount,
@@ -503,13 +509,52 @@ async function buildPromptMessages(
   const memoryContext = memories.length
     ? `Optional background memory:\n${memories.map(({ content }) => `- ${content}`).join('\n')}\nUse it only when the user's latest message clearly concerns this topic or explicitly asks about it. Never introduce the memory topic yourself, never mention it to demonstrate familiarity, and never force it into an unrelated reply. If the topic is not directly relevant, ignore this memory completely.`
     : 'No relevant memories are available for this message.';
+  const currentTime = new Date();
+  const previousTime = previousMessageAt ? new Date(previousMessageAt) : null;
+  const gapMinutes =
+    previousTime && !Number.isNaN(previousTime.getTime())
+      ? Math.max(
+          0,
+          Math.round((currentTime.getTime() - previousTime.getTime()) / 60000),
+        )
+      : null;
+  const timeContext = `Current local server time (ISO 8601): ${currentTime.toISOString()}.${
+    gapMinutes === null
+      ? ' There is no earlier saved message available for calculating a conversation gap.'
+      : ` The previous saved message was at ${previousTime?.toISOString()}, approximately ${gapMinutes} minutes ago.`
+  } Use this context only to make a natural greeting or check-in when it genuinely fits.`;
   return [
     {
       role: 'system',
-      content: `${AI_SETTINGS.chat.systemPrompt}\n\n${memoryContext}`,
+      content: `${AI_SETTINGS.chat.systemPrompt}\n\n${timeContext}\n\n${memoryContext}\nNever continue an assistant-introduced topic merely because it appeared in recent chat. Follow the user's latest message; if it does not concern a private topic, choose a neutral topic instead.`,
     },
     ...messages,
   ];
+}
+
+const privateTopicPatterns = {
+  pet: /\b(cat|cats|kitten|dog|dogs|pet|pets|animal|animals)\b/i,
+  relationship: /\b(boyfriend|girlfriend|partner|husband|wife)\b/i,
+  family: /\b(family|parents?|mother|father|child|children|son|daughter)\b/i,
+  location: /\b(home|hometown|city|town|live|lives|living)\b/i,
+} as const;
+
+function isMemoryExplicitlyAllowed(
+  memory: { readonly key?: string; readonly content: string },
+  latestUserMessage: string,
+): boolean {
+  const key = memory.key ?? '';
+  const topic = (
+    Object.keys(privateTopicPatterns) as Array<
+      keyof typeof privateTopicPatterns
+    >
+  ).find(
+    (candidate) =>
+      new RegExp(candidate === 'pet' ? 'pet|animal' : candidate, 'i').test(
+        key,
+      ) || privateTopicPatterns[candidate].test(memory.content),
+  );
+  return !topic || privateTopicPatterns[topic].test(latestUserMessage);
 }
 
 function writeStreamEvent(
