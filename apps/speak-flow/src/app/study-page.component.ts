@@ -23,8 +23,8 @@ import type { StudySegment, StudyMaterial } from '../study-store';
             <p class="eyebrow">Audio study</p>
             <h1>Learn from your own audio</h1>
             <p class="intro">
-              Upload an audio file and its SRT, VTT, LRC, or plain-text
-              transcript.
+              Upload audio or video. Subtitle files are optional; without one,
+              local Whisper will generate the transcript.
             </p>
           </div>
           <a routerLink="/chat" class="back-link">Back to chat</a>
@@ -37,7 +37,7 @@ import type { StudySegment, StudyMaterial } from '../study-store';
               accept="audio/*,video/*,.mp4,.mov,.mkv,.webm,.avi"
           /></label>
           <label
-            >Subtitle or text file<input
+            >Subtitle or text file (optional)<input
               type="file"
               #subtitle
               accept=".srt,.vtt,.lrc,.txt,text/plain"
@@ -344,13 +344,13 @@ export class StudyPageComponent {
   ): Promise<void> {
     const audioFile = audio.files?.[0];
     const subtitleFile = subtitle.files?.[0];
-    if (!audioFile || !subtitleFile) {
-      this.error.set('Choose both an audio file and a subtitle or text file.');
+    if (!audioFile) {
+      this.error.set('Choose an audio or video file.');
       return;
     }
     const form = new FormData();
     form.append('audio', audioFile);
-    form.append('subtitle', subtitleFile);
+    if (subtitleFile) form.append('subtitle', subtitleFile);
     this.busy.set(true);
     this.error.set('');
     try {
