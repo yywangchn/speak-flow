@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -356,8 +356,8 @@ export class StudyPageComponent {
     try {
       await firstValueFrom(this.http.post('/api/study/materials', form));
       await this.loadMaterials();
-    } catch {
-      this.error.set('The study material could not be processed.');
+    } catch (error: unknown) {
+      this.error.set(getStudyUploadError(error));
     } finally {
       this.busy.set(false);
     }
@@ -392,4 +392,17 @@ export class StudyPageComponent {
   words(text: string): string[] {
     return text.split(/(\s+)/);
   }
+}
+
+function getStudyUploadError(error: unknown): string {
+  if (error instanceof HttpErrorResponse) {
+    const body = error.error as { error?: unknown; hint?: unknown };
+    if (typeof body?.error === 'string')
+      return typeof body.hint === 'string'
+        ? `${body.error} ${body.hint}`
+        : body.error;
+    if (typeof error.message === 'string' && error.message)
+      return error.message;
+  }
+  return 'The study material could not be processed.';
 }
