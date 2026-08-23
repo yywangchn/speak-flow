@@ -50,6 +50,7 @@ import {
   addStudyVocabulary,
   deleteStudyVocabulary,
   listStudyVocabulary,
+  updateStudySegmentTiming,
 } from './study-store';
 import { detectSubtitleFormat, parseSubtitle } from './study-subtitles';
 import { cutAudioSegment, extractAudio } from './study-audio';
@@ -323,6 +324,44 @@ app.get(
   }),
 );
 
+app.patch(
+  '/api/study/materials/:id/segments/:segmentId',
+  asyncRoute(async (req, res) => {
+    const userId = (req as AuthenticatedRequest).userId;
+    const body = req.body as { startSeconds?: unknown; endSeconds?: unknown };
+    if (
+      !userId ||
+      typeof body.startSeconds !== 'number' ||
+      typeof body.endSeconds !== 'number' ||
+      !updateStudySegmentTiming(
+        userId,
+        req.params['id'],
+        req.params['segmentId'],
+        body.startSeconds,
+        body.endSeconds,
+      )
+    ) {
+      res
+        .status(400)
+        .json({ error: 'A valid segment time range is required.' });
+      return;
+    }
+    const study = getStudyMaterial(userId, req.params['id']);
+    const segment = study?.segments.find(
+      ({ id }) => id === req.params['segmentId'],
+    );
+    if (segment) {
+      await cutAudioSegment(
+        study.material.audioPath,
+        segment.audioPath ?? `${study.material.audioPath}.${segment.index}.mp3`,
+        body.startSeconds,
+        body.endSeconds,
+      );
+    }
+    res.json({ material: getStudyMaterial(userId, req.params['id']) });
+  }),
+);
+
 app.get(
   '/api/study/materials/:id/segments/:segmentId/audio',
   asyncRoute(async (req, res) => {
@@ -505,14 +544,12 @@ async function handleStudyUpload(
       await extractAudio(audioPath, extractedPath);
       audioPath = extractedPath;
     } catch (error: unknown) {
-      res
-        .status(422)
-        .json({
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Video audio extraction failed.',
-        });
+      res.status(422).json({
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Video audio extraction failed.',
+      });
       return;
     }
   }

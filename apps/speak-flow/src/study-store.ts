@@ -124,6 +124,32 @@ export function updateStudySegmentAudio(id: string, audioPath: string): void {
     .run(audioPath, id);
 }
 
+export function updateStudySegmentTiming(
+  userId: string,
+  materialId: string,
+  segmentId: string,
+  startSeconds: number,
+  endSeconds: number,
+): boolean {
+  const owns = database
+    .prepare('SELECT 1 FROM study_materials WHERE id = ? AND user_id = ?')
+    .get(materialId, userId);
+  if (
+    !owns ||
+    !Number.isFinite(startSeconds) ||
+    !Number.isFinite(endSeconds) ||
+    endSeconds <= startSeconds
+  )
+    return false;
+  return (
+    database
+      .prepare(
+        'UPDATE study_segments SET start_seconds = ?, end_seconds = ?, manually_adjusted = 1 WHERE id = ? AND material_id = ?',
+      )
+      .run(startSeconds, endSeconds, segmentId, materialId).changes > 0
+  );
+}
+
 export function listStudyMaterials(userId: string): StudyMaterial[] {
   return database
     .prepare(
