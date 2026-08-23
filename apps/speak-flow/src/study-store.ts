@@ -91,6 +91,22 @@ export function saveStudySegments(
   transaction();
 }
 
+export function updateStudyMaterialStatus(
+  id: string,
+  status: StudyMaterial['status'],
+  error?: string,
+): void {
+  database
+    .prepare('UPDATE study_materials SET status = ?, error = ? WHERE id = ?')
+    .run(status, error ?? null, id);
+}
+
+export function updateStudySegmentAudio(id: string, audioPath: string): void {
+  database
+    .prepare('UPDATE study_segments SET audio_path = ? WHERE id = ?')
+    .run(audioPath, id);
+}
+
 export function listStudyMaterials(userId: string): StudyMaterial[] {
   return database
     .prepare(

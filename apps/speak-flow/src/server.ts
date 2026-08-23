@@ -45,8 +45,11 @@ import {
   getStudyMaterial,
   listStudyMaterials,
   saveStudySegments,
+  updateStudyMaterialStatus,
+  updateStudySegmentAudio,
 } from './study-store';
 import { detectSubtitleFormat, parseSubtitle } from './study-subtitles';
+import { cutAudioSegment } from './study-audio';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
@@ -259,6 +262,27 @@ app.get(
 );
 
 app.get(
+  '/api/study/materials/:id/segments/:segmentId/audio',
+  asyncRoute(async (req, res) => {
+    const userId = (req as AuthenticatedRequest).userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Authentication required.' });
+      return;
+    }
+    const study = getStudyMaterial(userId, req.params['id']);
+    const segment = study?.segments.find(
+      ({ id }) => id === req.params['segmentId'],
+    );
+    if (!segment?.audioPath) {
+      res.status(404).json({ error: 'Study segment audio not found.' });
+      return;
+    }
+    res.setHeader('Content-Type', 'audio/mpeg');
+    createReadStream(segment.audioPath).pipe(res);
+  }),
+);
+
+app.get(
   '/api/memories',
   asyncRoute(async (req, res) => {
     const userId = (req as AuthenticatedRequest).userId;
@@ -428,6 +452,31 @@ async function handleStudyUpload(
       material.id,
       parseSubtitle(readFileSync(subtitlePath, 'utf8'), format),
     );
+    const stored = getStudyMaterial(req.userId, material.id);
+    try {
+      const segmentDirectory = join(directory, 'segments');
+      mkdirSync(segmentDirectory, { recursive: true });
+      for (const segment of stored?.segments ?? []) {
+        const outputPath = join(
+          segmentDirectory,
+          `${String(segment.index).padStart(4, '0')}.mp3`,
+        );
+        await cutAudioSegment(
+          audioPath,
+          outputPath,
+          segment.startSeconds,
+          segment.endSeconds,
+        );
+        updateStudySegmentAudio(segment.id, outputPath);
+      }
+      updateStudyMaterialStatus(material.id, 'ready');
+    } catch (error: unknown) {
+      updateStudyMaterialStatus(
+        material.id,
+        'failed',
+        error instanceof Error ? error.message : 'Audio cutting failed.',
+      );
+    }
   }
   res.status(201).json({ material: getStudyMaterial(req.userId, material.id) });
 }
