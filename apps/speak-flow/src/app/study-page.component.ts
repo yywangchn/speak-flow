@@ -1,5 +1,9 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import type { StudySegment, StudyMaterial } from '../study-store';
 
 @Component({
   selector: 'app-study-page',
@@ -26,17 +30,52 @@ import { RouterLink } from '@angular/router';
           <a routerLink="/chat" class="back-link">Back to chat</a>
         </header>
         <div class="import-grid">
-          <label>Audio file<input type="file" accept="audio/*" /></label>
+          <label>Audio file<input #audio type="file" accept="audio/*" /></label>
           <label
             >Subtitle or text file<input
               type="file"
+              #subtitle
               accept=".srt,.vtt,.lrc,.txt,text/plain"
           /></label>
         </div>
+        <button
+          class="upload"
+          type="button"
+          [disabled]="busy()"
+          (click)="upload(audio, subtitle)"
+        >
+          {{ busy() ? 'Processing...' : 'Add to study library' }}
+        </button>
+        @if (error()) {
+          <p class="error" role="alert">{{ error() }}</p>
+        }
         <p class="processing-note">
           Timestamp subtitles will be cut directly. Plain text will use local
           forced alignment.
         </p>
+      </section>
+      <section class="library" aria-label="Study library">
+        <h2>Your materials</h2>
+        @for (material of materials(); track material.id) {
+          <button
+            class="material"
+            type="button"
+            (click)="selectMaterial(material)"
+          >
+            {{ material.title }} <span>{{ material.status }}</span>
+          </button>
+        } @empty {
+          <p>No materials yet.</p>
+        }
+        @if (selected(); as current) {
+          @for (segment of current.segments; track segment.id) {
+            <article class="segment">
+              <span>{{ segment.index + 1 }}</span>
+              <p>{{ segment.text }}</p>
+              <button type="button" (click)="play(segment)">Play</button>
+            </article>
+          }
+        }
       </section>
     </main>
   `,
@@ -132,6 +171,61 @@ import { RouterLink } from '@angular/router';
       color: #7a877f;
       font-size: 0.85rem;
     }
+    .upload {
+      margin: 0 32px 18px;
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 4px;
+      background: #1f6b52;
+      color: white;
+      cursor: pointer;
+      font: inherit;
+    }
+    .upload:disabled {
+      opacity: 0.5;
+    }
+    .error {
+      margin: 0 32px 20px;
+      color: #9b3535;
+    }
+    .library {
+      margin-top: 24px;
+      padding: 24px 32px 40px;
+    }
+    .material {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      margin: 6px 0;
+      padding: 12px;
+      border: 1px solid #dfe7e1;
+      background: white;
+      color: #1f2a24;
+      cursor: pointer;
+      text-align: left;
+      font: inherit;
+    }
+    .material span {
+      color: #7a877f;
+    }
+    .segment {
+      display: grid;
+      grid-template-columns: 30px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      margin-top: 8px;
+      padding: 12px;
+      background: #edf4ef;
+    }
+    .segment p {
+      margin: 0;
+    }
+    .segment button {
+      border: 1px solid #cfdad2;
+      background: white;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
     @media (max-width: 760px) {
       .study-shell {
         display: block;
@@ -163,11 +257,90 @@ import { RouterLink } from '@angular/router';
       .import-grid {
         grid-template-columns: 1fr;
       }
-      .processing-note {
+      .processing-note,
+      .library {
         padding: 0 20px 24px;
+      }
+      .upload,
+      .error {
+        margin-left: 20px;
+        margin-right: 20px;
       }
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class StudyPageComponent {}
+export class StudyPageComponent {
+  private readonly http = inject(HttpClient);
+  readonly materials = signal<StudyMaterial[]>([]);
+  readonly selected = signal<{
+    material: StudyMaterial;
+    segments: StudySegment[];
+  } | null>(null);
+  readonly busy = signal(false);
+  readonly error = signal('');
+  private activeAudio?: HTMLAudioElement;
+
+  constructor() {
+    void this.loadMaterials();
+  }
+
+  async loadMaterials(): Promise<void> {
+    try {
+      this.materials.set(
+        (
+          await firstValueFrom(
+            this.http.get<{ materials: StudyMaterial[] }>(
+              '/api/study/materials',
+            ),
+          )
+        ).materials,
+      );
+    } catch {
+      this.error.set('Study materials could not be loaded.');
+    }
+  }
+
+  async selectMaterial(material: StudyMaterial): Promise<void> {
+    this.selected.set(
+      await firstValueFrom(
+        this.http.get<{ material: StudyMaterial; segments: StudySegment[] }>(
+          `/api/study/materials/${material.id}`,
+        ),
+      ),
+    );
+  }
+
+  async upload(
+    audio: HTMLInputElement,
+    subtitle: HTMLInputElement,
+  ): Promise<void> {
+    const audioFile = audio.files?.[0];
+    const subtitleFile = subtitle.files?.[0];
+    if (!audioFile || !subtitleFile) {
+      this.error.set('Choose both an audio file and a subtitle or text file.');
+      return;
+    }
+    const form = new FormData();
+    form.append('audio', audioFile);
+    form.append('subtitle', subtitleFile);
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await firstValueFrom(this.http.post('/api/study/materials', form));
+      await this.loadMaterials();
+    } catch {
+      this.error.set('The study material could not be processed.');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  play(segment: StudySegment): void {
+    this.activeAudio?.pause();
+    this.activeAudio = new Audio(
+      `/api/study/materials/${segment.materialId}/segments/${segment.id}/audio`,
+    );
+    void this.activeAudio.play();
+  }
+}
