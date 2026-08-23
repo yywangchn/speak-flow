@@ -249,20 +249,18 @@ app.post(
       return;
     }
     const word = body.word.trim().toLowerCase();
-    res
-      .status(201)
-      .json({
-        vocabulary: addStudyVocabulary({
-          userId,
-          word,
-          sourceText: body.sourceText,
-          materialId:
-            typeof body.materialId === 'string' ? body.materialId : undefined,
-          segmentId:
-            typeof body.segmentId === 'string' ? body.segmentId : undefined,
-          dictionaryUrl: `https://www.ldoceonline.com/dictionary/${encodeURIComponent(word)}`,
-        }),
-      });
+    res.status(201).json({
+      vocabulary: addStudyVocabulary({
+        userId,
+        word,
+        sourceText: body.sourceText,
+        materialId:
+          typeof body.materialId === 'string' ? body.materialId : undefined,
+        segmentId:
+          typeof body.segmentId === 'string' ? body.segmentId : undefined,
+        dictionaryUrl: `https://www.ldoceonline.com/dictionary/${encodeURIComponent(word)}`,
+      }),
+    });
   }),
 );
 
@@ -540,6 +538,12 @@ async function handleStudyUpload(
         error instanceof Error ? error.message : 'Audio cutting failed.',
       );
     }
+  } else {
+    updateStudyMaterialStatus(
+      material.id,
+      'failed',
+      'Plain text requires a local forced-alignment command. Configure SPEAKFLOW_ALIGN_COMMAND before processing.',
+    );
   }
   res.status(201).json({ material: getStudyMaterial(req.userId, material.id) });
 }
