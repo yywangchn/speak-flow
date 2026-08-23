@@ -13,6 +13,26 @@
     'Segoe UI',
     sans-serif;
 }
+.module-switcher {
+  position: fixed;
+  top: 50%;
+  left: max(24px, calc(50% - 470px));
+  display: grid;
+  gap: 4px;
+  transform: translateY(-50%);
+}
+.module-switcher a {
+  padding: 10px 12px;
+  border-left: 3px solid transparent;
+  color: #718078;
+  text-decoration: none;
+}
+.module-switcher a.active,
+.module-switcher a:hover {
+  border-left-color: #1f8a68;
+  background: #e8f3ed;
+  color: #1f6b52;
+}
 .conversation-panel {
   display: flex;
   flex-direction: column;
@@ -93,6 +113,23 @@ h1 {
     border: 0;
     border-radius: 0;
     box-shadow: none;
+  }
+  .module-switcher {
+    position: static;
+    display: flex;
+    padding: 10px 20px;
+    transform: none;
+    background: #fff;
+    border-bottom: 1px solid #e8ede9;
+  }
+  .module-switcher a {
+    border-left: 0;
+    border-bottom: 3px solid transparent;
+  }
+  .module-switcher a.active,
+  .module-switcher a:hover {
+    border-bottom-color: #1f8a68;
+    border-left-color: transparent;
   }
   .conversation-header {
     padding-left: 20px;

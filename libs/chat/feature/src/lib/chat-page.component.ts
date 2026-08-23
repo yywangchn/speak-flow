@@ -8,6 +8,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import {
   ChatMessage,
   ChatRole,
@@ -28,7 +29,7 @@ import {
 @Component({
   selector: 'chat-page',
   standalone: true,
-  imports: [ChatMessageListComponent, ChatReplyFormComponent],
+  imports: [ChatMessageListComponent, ChatReplyFormComponent, RouterLink],
   templateUrl: './chat-page.component.html',
   styleUrl: './chat-page.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

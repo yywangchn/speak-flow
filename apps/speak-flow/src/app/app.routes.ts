@@ -13,5 +13,13 @@ export const appRoutes: Route[] = [
         ({ ChatPageComponent }) => ChatPageComponent,
       ),
   },
+  {
+    path: 'study',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./study-page.component').then(
+        ({ StudyPageComponent }) => StudyPageComponent,
+      ),
+  },
   { path: '**', redirectTo: 'chat' },
 ];
