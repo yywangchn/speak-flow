@@ -30,7 +30,12 @@ import type { StudySegment, StudyMaterial } from '../study-store';
           <a routerLink="/chat" class="back-link">Back to chat</a>
         </header>
         <div class="import-grid">
-          <label>Audio file<input #audio type="file" accept="audio/*" /></label>
+          <label
+            >Audio or video file<input
+              #audio
+              type="file"
+              accept="audio/*,video/*,.mp4,.mov,.mkv,.webm,.avi"
+          /></label>
           <label
             >Subtitle or text file<input
               type="file"

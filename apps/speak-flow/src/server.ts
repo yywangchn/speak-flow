@@ -52,7 +52,8 @@ import {
   listStudyVocabulary,
 } from './study-store';
 import { detectSubtitleFormat, parseSubtitle } from './study-subtitles';
-import { cutAudioSegment } from './study-audio';
+import { cutAudioSegment, extractAudio } from './study-audio';
+import { transcribeWithLocalWhisper } from './study-transcription';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
@@ -494,11 +495,42 @@ async function handleStudyUpload(
     req.pipe(busboy);
   });
   await Promise.all(writes);
-  if (!audioPath || !subtitlePath) {
-    res
-      .status(400)
-      .json({ error: 'Both audio and subtitle files are required.' });
+  if (!audioPath) {
+    res.status(400).json({ error: 'An audio or video file is required.' });
     return;
+  }
+  if (/\.(mp4|mov|mkv|webm|avi)$/i.test(audioName)) {
+    const extractedPath = join(directory, 'source.wav');
+    try {
+      await extractAudio(audioPath, extractedPath);
+      audioPath = extractedPath;
+    } catch (error: unknown) {
+      res
+        .status(422)
+        .json({
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Video audio extraction failed.',
+        });
+      return;
+    }
+  }
+  if (!subtitlePath) {
+    subtitlePath = join(directory, 'generated.srt');
+    try {
+      await transcribeWithLocalWhisper(audioPath, subtitlePath);
+      subtitleName = 'generated.srt';
+    } catch (error: unknown) {
+      res.status(503).json({
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Local transcription failed.',
+        hint: 'Install whisper-cli and set SPEAKFLOW_WHISPER_MODEL to a local ggml model path.',
+      });
+      return;
+    }
   }
   const format = detectSubtitleFormat(subtitleName);
   const material = createStudyMaterial({

@@ -41,3 +41,30 @@ export function cutAudioSegment(
     );
   });
 }
+
+export function extractAudio(
+  inputPath: string,
+  outputPath: string,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const process = spawn('ffmpeg', [
+      '-y',
+      '-i',
+      inputPath,
+      '-vn',
+      '-acodec',
+      'pcm_s16le',
+      outputPath,
+    ]);
+    let error = '';
+    process.stderr.on('data', (chunk: Buffer) => {
+      error += chunk.toString();
+    });
+    process.on('error', reject);
+    process.on('close', (code) =>
+      code === 0
+        ? resolve()
+        : reject(new Error(error || `ffmpeg exited with ${code}`)),
+    );
+  });
+}
