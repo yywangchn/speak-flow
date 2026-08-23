@@ -12,8 +12,8 @@ export function transcribeWithLocalWhisper(
       ),
     );
   return new Promise((resolve, reject) => {
-    const process = spawn(
-      process.env['SPEAKFLOW_WHISPER_COMMAND'] ?? 'whisper-cli',
+    const child = spawn(
+      globalThis.process.env['SPEAKFLOW_WHISPER_COMMAND'] ?? 'whisper-cli',
       [
         '-m',
         modelPath,
@@ -25,11 +25,11 @@ export function transcribeWithLocalWhisper(
       ],
     );
     let error = '';
-    process.stderr.on('data', (chunk: Buffer) => {
+    child.stderr.on('data', (chunk: Buffer) => {
       error += chunk.toString();
     });
-    process.on('error', reject);
-    process.on('close', (code) =>
+    child.on('error', reject);
+    child.on('close', (code: number | null) =>
       code === 0
         ? resolve()
         : reject(new Error(error || `Whisper exited with ${code}`)),

@@ -350,7 +350,7 @@ app.patch(
     const segment = study?.segments.find(
       ({ id }) => id === req.params['segmentId'],
     );
-    if (segment) {
+    if (study && segment) {
       await cutAudioSegment(
         study.material.audioPath,
         segment.audioPath ?? `${study.material.audioPath}.${segment.index}.mp3`,
