@@ -47,6 +47,9 @@ import {
   saveStudySegments,
   updateStudyMaterialStatus,
   updateStudySegmentAudio,
+  addStudyVocabulary,
+  deleteStudyVocabulary,
+  listStudyVocabulary,
 } from './study-store';
 import { detectSubtitleFormat, parseSubtitle } from './study-subtitles';
 import { cutAudioSegment } from './study-audio';
@@ -212,6 +215,66 @@ app.get(
       return;
     }
     res.json({ materials: listStudyMaterials(userId) });
+  }),
+);
+
+app.get(
+  '/api/study/vocabulary',
+  asyncRoute(async (req, res) => {
+    const userId = (req as AuthenticatedRequest).userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Authentication required.' });
+      return;
+    }
+    res.json({ vocabulary: listStudyVocabulary(userId) });
+  }),
+);
+
+app.post(
+  '/api/study/vocabulary',
+  asyncRoute(async (req, res) => {
+    const userId = (req as AuthenticatedRequest).userId;
+    const body = req.body as {
+      word?: unknown;
+      sourceText?: unknown;
+      materialId?: unknown;
+      segmentId?: unknown;
+    };
+    if (
+      !userId ||
+      typeof body.word !== 'string' ||
+      typeof body.sourceText !== 'string'
+    ) {
+      res.status(400).json({ error: 'Word and source text are required.' });
+      return;
+    }
+    const word = body.word.trim().toLowerCase();
+    res
+      .status(201)
+      .json({
+        vocabulary: addStudyVocabulary({
+          userId,
+          word,
+          sourceText: body.sourceText,
+          materialId:
+            typeof body.materialId === 'string' ? body.materialId : undefined,
+          segmentId:
+            typeof body.segmentId === 'string' ? body.segmentId : undefined,
+          dictionaryUrl: `https://www.ldoceonline.com/dictionary/${encodeURIComponent(word)}`,
+        }),
+      });
+  }),
+);
+
+app.delete(
+  '/api/study/vocabulary/:id',
+  asyncRoute(async (req, res) => {
+    const userId = (req as AuthenticatedRequest).userId;
+    if (!userId || !deleteStudyVocabulary(userId, req.params['id'])) {
+      res.status(404).json({ error: 'Vocabulary item not found.' });
+      return;
+    }
+    res.status(204).send();
   }),
 );
 

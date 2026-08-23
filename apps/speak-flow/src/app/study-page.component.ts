@@ -71,7 +71,21 @@ import type { StudySegment, StudyMaterial } from '../study-store';
           @for (segment of current.segments; track segment.id) {
             <article class="segment">
               <span>{{ segment.index + 1 }}</span>
-              <p>{{ segment.text }}</p>
+              <p>
+                @for (word of words(segment.text); track $index) {
+                  @if (word.trim()) {
+                    <button
+                      class="word"
+                      type="button"
+                      (click)="saveWord(word, segment)"
+                    >
+                      {{ word }}
+                    </button>
+                  } @else {
+                    {{ word }}
+                  }
+                }
+              </p>
               <button type="button" (click)="play(segment)">Play</button>
             </article>
           }
@@ -220,6 +234,14 @@ import type { StudySegment, StudyMaterial } from '../study-store';
     .segment p {
       margin: 0;
     }
+    .word {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      padding: 0;
+    }
     .segment button {
       border: 1px solid #cfdad2;
       background: white;
@@ -342,5 +364,27 @@ export class StudyPageComponent {
       `/api/study/materials/${segment.materialId}/segments/${segment.id}/audio`,
     );
     void this.activeAudio.play();
+  }
+
+  async saveWord(word: string, segment: StudySegment): Promise<void> {
+    const clean = word.toLowerCase().replace(/[^a-z'-]/g, '');
+    if (!clean) return;
+    await firstValueFrom(
+      this.http.post('/api/study/vocabulary', {
+        word: clean,
+        sourceText: segment.text,
+        materialId: segment.materialId,
+        segmentId: segment.id,
+      }),
+    );
+    window.open(
+      `https://www.ldoceonline.com/dictionary/${encodeURIComponent(clean)}`,
+      '_blank',
+      'noopener',
+    );
+  }
+
+  words(text: string): string[] {
+    return text.split(/(\s+)/);
   }
 }

@@ -41,7 +41,24 @@ database.exec(`
     text TEXT NOT NULL, start_seconds REAL NOT NULL, end_seconds REAL NOT NULL,
     audio_path TEXT, confidence REAL, manually_adjusted INTEGER NOT NULL DEFAULT 0
   );
+  CREATE TABLE IF NOT EXISTS study_vocabulary (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL, word TEXT NOT NULL,
+    material_id TEXT, segment_id TEXT, source_text TEXT NOT NULL,
+    dictionary_url TEXT NOT NULL, created_at TEXT NOT NULL,
+    UNIQUE(user_id, word)
+  );
 `);
+
+export type StudyVocabulary = {
+  readonly id: string;
+  readonly userId: string;
+  readonly word: string;
+  readonly materialId?: string;
+  readonly segmentId?: string;
+  readonly sourceText: string;
+  readonly dictionaryUrl: string;
+  readonly createdAt: string;
+};
 
 export function createStudyMaterial(
   input: Omit<StudyMaterial, 'id' | 'createdAt' | 'status'>,
@@ -133,6 +150,52 @@ export function getStudyMaterial(
   return { material: toMaterial(row), segments };
 }
 
+export function listStudyVocabulary(userId: string): StudyVocabulary[] {
+  return database
+    .prepare(
+      'SELECT * FROM study_vocabulary WHERE user_id = ? ORDER BY created_at DESC',
+    )
+    .all(userId)
+    .map((row) => toVocabulary(row as Record<string, unknown>));
+}
+
+export function addStudyVocabulary(
+  input: Omit<StudyVocabulary, 'id' | 'createdAt'>,
+): StudyVocabulary {
+  const existing = database
+    .prepare('SELECT * FROM study_vocabulary WHERE user_id = ? AND word = ?')
+    .get(input.userId, input.word) as Record<string, unknown> | undefined;
+  if (existing) return toVocabulary(existing);
+  const value = {
+    ...input,
+    id: randomUUID(),
+    createdAt: new Date().toISOString(),
+  };
+  database
+    .prepare(
+      'INSERT INTO study_vocabulary (id,user_id,word,material_id,segment_id,source_text,dictionary_url,created_at) VALUES (?,?,?,?,?,?,?,?)',
+    )
+    .run(
+      value.id,
+      value.userId,
+      value.word,
+      value.materialId ?? null,
+      value.segmentId ?? null,
+      value.sourceText,
+      value.dictionaryUrl,
+      value.createdAt,
+    );
+  return value;
+}
+
+export function deleteStudyVocabulary(userId: string, id: string): boolean {
+  return (
+    database
+      .prepare('DELETE FROM study_vocabulary WHERE user_id = ? AND id = ?')
+      .run(userId, id).changes > 0
+  );
+}
+
 function toMaterial(row: Record<string, unknown>): StudyMaterial {
   return {
     id: String(row['id']),
@@ -159,5 +222,19 @@ function toSegment(row: Record<string, unknown>): StudySegment {
     confidence:
       typeof row['confidence'] === 'number' ? row['confidence'] : undefined,
     manuallyAdjusted: Boolean(row['manually_adjusted']),
+  };
+}
+function toVocabulary(row: Record<string, unknown>): StudyVocabulary {
+  return {
+    id: String(row['id']),
+    userId: String(row['user_id']),
+    word: String(row['word']),
+    materialId:
+      typeof row['material_id'] === 'string' ? row['material_id'] : undefined,
+    segmentId:
+      typeof row['segment_id'] === 'string' ? row['segment_id'] : undefined,
+    sourceText: String(row['source_text']),
+    dictionaryUrl: String(row['dictionary_url']),
+    createdAt: String(row['created_at']),
   };
 }
