@@ -5,6 +5,10 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import express from 'express';
+import Busboy from 'busboy';
+import { createWriteStream, mkdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import type { RequestHandler, Response } from 'express';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,7 +35,13 @@ import {
   type AuthenticatedRequest,
 } from './auth-http';
 import { streamSpeech, synthesizeSpeech } from './cosyvoice-client';
-import { getStudyMaterial, listStudyMaterials } from './study-store';
+import {
+  createStudyMaterial,
+  getStudyMaterial,
+  listStudyMaterials,
+  saveStudySegments,
+} from './study-store';
+import { detectSubtitleFormat, parseSubtitle } from './study-subtitles';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
@@ -197,6 +207,12 @@ app.get(
   }),
 );
 
+app.post(
+  '/api/study/materials',
+  (req, res, next) =>
+    void handleStudyUpload(req as AuthenticatedRequest, res).catch(next),
+);
+
 app.get(
   '/api/study/materials/:id',
   asyncRoute(async (req, res) => {
@@ -301,6 +317,93 @@ export async function handleSpeech(
     console.error('CosyVoice request failed:', error);
     res.status(502).json({ error: 'Speech could not be generated.' });
   }
+}
+
+async function handleStudyUpload(
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> {
+  if (!req.userId) {
+    res.status(401).json({ error: 'Authentication required.' });
+    return;
+  }
+  if (!String(req.headers['content-type']).includes('multipart/form-data')) {
+    res
+      .status(415)
+      .json({
+        error:
+          'Audio and subtitle files must be uploaded as multipart form data.',
+      });
+    return;
+  }
+  const busboy = Busboy({
+    headers: req.headers,
+    limits: { files: 2, fileSize: 200 * 1024 * 1024 },
+  });
+  const uploadId = randomUUID();
+  const directory = join(
+    process.env['SPEAKFLOW_DATA_DIRECTORY'] ?? 'data',
+    'study-media',
+    uploadId,
+  );
+  mkdirSync(directory, { recursive: true });
+  let audioPath = '';
+  let subtitlePath = '';
+  let audioName = '';
+  let subtitleName = '';
+  const writes: Promise<void>[] = [];
+  busboy.on('file', (field, stream, info) => {
+    const target =
+      field === 'audio' ? 'audio' : field === 'subtitle' ? 'subtitle' : null;
+    if (!target) {
+      stream.resume();
+      return;
+    }
+    const safeName = info.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = join(directory, `${target}-${safeName}`);
+    if (target === 'audio') {
+      audioPath = path;
+      audioName = safeName;
+    } else {
+      subtitlePath = path;
+      subtitleName = safeName;
+    }
+    writes.push(
+      new Promise<void>((resolveWrite, reject) => {
+        const output = createWriteStream(path);
+        output.on('finish', resolveWrite);
+        output.on('error', reject);
+        stream.on('error', reject).pipe(output);
+      }),
+    );
+  });
+  await new Promise<void>((resolveUpload, rejectUpload) => {
+    busboy.on('finish', () => resolveUpload());
+    busboy.on('error', rejectUpload);
+    req.pipe(busboy);
+  });
+  await Promise.all(writes);
+  if (!audioPath || !subtitlePath) {
+    res
+      .status(400)
+      .json({ error: 'Both audio and subtitle files are required.' });
+    return;
+  }
+  const format = detectSubtitleFormat(subtitleName);
+  const material = createStudyMaterial({
+    userId: req.userId,
+    title: audioName,
+    audioPath,
+    subtitlePath,
+    subtitleFormat: format,
+  });
+  if (format !== 'plain-text') {
+    saveStudySegments(
+      material.id,
+      parseSubtitle(readFileSync(subtitlePath, 'utf8'), format),
+    );
+  }
+  res.status(201).json({ material: getStudyMaterial(req.userId, material.id) });
 }
 
 type SpeechStreamResponse = Pick<Response, 'end' | 'setHeader' | 'status'> & {
