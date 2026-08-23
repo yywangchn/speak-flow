@@ -31,6 +31,7 @@ import {
   type AuthenticatedRequest,
 } from './auth-http';
 import { streamSpeech, synthesizeSpeech } from './cosyvoice-client';
+import { getStudyMaterial, listStudyMaterials } from './study-store';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
@@ -157,7 +158,7 @@ app.get(
   (req, res, next) => void currentUser(req, res).catch(next),
 );
 app.use(
-  ['/api/chat', '/api/memories', '/api/speech'],
+  ['/api/chat', '/api/memories', '/api/speech', '/api/study'],
   (req, res, next) =>
     void requireAuth(req as AuthenticatedRequest, res, next).catch(next),
 );
@@ -181,6 +182,35 @@ app.get(
       return;
     }
     res.json({ messages: await listRecentMessages(userId) });
+  }),
+);
+
+app.get(
+  '/api/study/materials',
+  asyncRoute(async (req, res) => {
+    const userId = (req as AuthenticatedRequest).userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Authentication required.' });
+      return;
+    }
+    res.json({ materials: listStudyMaterials(userId) });
+  }),
+);
+
+app.get(
+  '/api/study/materials/:id',
+  asyncRoute(async (req, res) => {
+    const userId = (req as AuthenticatedRequest).userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Authentication required.' });
+      return;
+    }
+    const material = getStudyMaterial(userId, req.params['id']);
+    if (!material) {
+      res.status(404).json({ error: 'Study material not found.' });
+      return;
+    }
+    res.json(material);
   }),
 );
 
