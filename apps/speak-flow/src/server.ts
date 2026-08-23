@@ -38,6 +38,8 @@ const MEMORY_RETRIEVAL_OPTIONS = {
   limit: AI_SETTINGS.memoryRetrieval.topK,
   minimumSimilarity: AI_SETTINGS.memoryRetrieval.minimumSimilarity,
 } as const;
+const PRIVATE_MEMORY_COOLDOWN_MS = 30 * 60 * 1000;
+const privateMemoryLastUsedAt = new Map<string, number>();
 
 export const app = express();
 let angularApp: AngularNodeAppEngine | undefined;
@@ -475,9 +477,23 @@ async function buildPromptMessages(
           queryVector,
           MEMORY_RETRIEVAL_OPTIONS,
         );
-        memories = relevantMemories.filter((memory) =>
-          isMemoryExplicitlyAllowed(memory, latestUserMessage),
-        );
+        memories = relevantMemories
+          .filter((memory) =>
+            isMemoryExplicitlyAllowed(memory, latestUserMessage),
+          )
+          .filter((memory) => {
+            if (!isPrivateMemory(memory)) return true;
+            const lastUsedAt = privateMemoryLastUsedAt.get(memory.id);
+            return (
+              !lastUsedAt ||
+              Date.now() - lastUsedAt >= PRIVATE_MEMORY_COOLDOWN_MS ||
+              isExplicitPrivateTopic(latestUserMessage)
+            );
+          });
+        for (const memory of memories) {
+          if (isPrivateMemory(memory))
+            privateMemoryLastUsedAt.set(memory.id, Date.now());
+        }
         console.info('Memory retrieval completed', {
           userId,
           storedMemoryCount,
@@ -523,12 +539,18 @@ async function buildPromptMessages(
       ? ' There is no earlier saved message available for calculating a conversation gap.'
       : ` The previous saved message was at ${previousTime?.toISOString()}, approximately ${gapMinutes} minutes ago.`
   } Use this context only to make a natural greeting or check-in when it genuinely fits.`;
+  const conversationMessages = messages.filter(
+    (message) =>
+      message.role === 'user' ||
+      !privateTopicPatterns.pet.test(message.content) ||
+      privateTopicPatterns.pet.test(latestUserMessage),
+  );
   return [
     {
       role: 'system',
       content: `${AI_SETTINGS.chat.systemPrompt}\n\n${timeContext}\n\n${memoryContext}\nNever continue an assistant-introduced topic merely because it appeared in recent chat. Follow the user's latest message; if it does not concern a private topic, choose a neutral topic instead.`,
     },
-    ...messages,
+    ...conversationMessages,
   ];
 }
 
@@ -555,6 +577,22 @@ function isMemoryExplicitlyAllowed(
       ) || privateTopicPatterns[candidate].test(memory.content),
   );
   return !topic || privateTopicPatterns[topic].test(latestUserMessage);
+}
+
+function isPrivateMemory(memory: {
+  readonly key?: string;
+  readonly content: string;
+}): boolean {
+  const value = `${memory.key ?? ''} ${memory.content}`;
+  return /\b(pet|animal|relationship|partner|family|parent|child|location|cat|dog|kitten)\b/i.test(
+    value,
+  );
+}
+
+function isExplicitPrivateTopic(message: string): boolean {
+  return Object.values(privateTopicPatterns).some((pattern) =>
+    pattern.test(message),
+  );
 }
 
 function writeStreamEvent(
