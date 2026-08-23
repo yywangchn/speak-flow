@@ -6,7 +6,12 @@ import {
 } from '@angular/ssr/node';
 import express from 'express';
 import Busboy from 'busboy';
-import { createWriteStream, mkdirSync, readFileSync } from 'node:fs';
+import {
+  createReadStream,
+  createWriteStream,
+  mkdirSync,
+  readFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { RequestHandler, Response } from 'express';
@@ -231,6 +236,29 @@ app.get(
 );
 
 app.get(
+  '/api/study/materials/:id/audio',
+  asyncRoute(async (req, res) => {
+    const userId = (req as AuthenticatedRequest).userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Authentication required.' });
+      return;
+    }
+    const material = getStudyMaterial(userId, req.params['id']);
+    if (!material) {
+      res.status(404).json({ error: 'Study material not found.' });
+      return;
+    }
+    res.setHeader('Content-Type', 'audio/mpeg');
+    createReadStream(material.material.audioPath)
+      .on('error', () => {
+        if (!res.headersSent)
+          res.status(404).json({ error: 'Audio file not found.' });
+      })
+      .pipe(res);
+  }),
+);
+
+app.get(
   '/api/memories',
   asyncRoute(async (req, res) => {
     const userId = (req as AuthenticatedRequest).userId;
@@ -328,12 +356,10 @@ async function handleStudyUpload(
     return;
   }
   if (!String(req.headers['content-type']).includes('multipart/form-data')) {
-    res
-      .status(415)
-      .json({
-        error:
-          'Audio and subtitle files must be uploaded as multipart form data.',
-      });
+    res.status(415).json({
+      error:
+        'Audio and subtitle files must be uploaded as multipart form data.',
+    });
     return;
   }
   const busboy = Busboy({
