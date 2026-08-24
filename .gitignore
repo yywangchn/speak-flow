@@ -28,7 +28,8 @@ node_modules
 /.sass-cache
 /connect.lock
 /coverage
-/data/*.sqlite*
+# local databases and persistent study media
+/data/
 /libpeerconnection.log
 npm-debug.log
 yarn-error.log
