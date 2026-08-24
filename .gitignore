@@ -50,6 +50,7 @@ Thumbs.db
 
 # generated media and transcription artifacts
 /video/
+/docs/
 
 # local secrets
 .env
