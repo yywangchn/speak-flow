@@ -208,6 +208,7 @@ import type { StudySegment, StudyMaterial } from '../study-store';
       color: #9b3535;
     }
     .library {
+      grid-column: 2;
       margin-top: 24px;
       padding: 24px 32px 40px;
     }
@@ -274,6 +275,7 @@ import type { StudySegment, StudyMaterial } from '../study-store';
         border-left-color: transparent;
       }
       .study-panel {
+        grid-column: 1;
         border: 0;
         box-shadow: none;
       }
@@ -286,6 +288,7 @@ import type { StudySegment, StudyMaterial } from '../study-store';
       }
       .processing-note,
       .library {
+        grid-column: 1;
         padding: 0 20px 24px;
       }
       .upload,
