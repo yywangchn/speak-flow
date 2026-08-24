@@ -222,6 +222,29 @@ export function deleteStudyVocabulary(userId: string, id: string): boolean {
   );
 }
 
+export function deleteStudyMaterial(
+  userId: string,
+  id: string,
+): StudyMaterial | null {
+  const material = database
+    .prepare('SELECT * FROM study_materials WHERE user_id = ? AND id = ?')
+    .get(userId, id) as Record<string, unknown> | undefined;
+  if (!material) return null;
+  const transaction = database.transaction(() => {
+    database
+      .prepare('DELETE FROM study_segments WHERE material_id = ?')
+      .run(id);
+    database
+      .prepare('DELETE FROM study_vocabulary WHERE material_id = ?')
+      .run(id);
+    database
+      .prepare('DELETE FROM study_materials WHERE id = ? AND user_id = ?')
+      .run(id, userId);
+  });
+  transaction();
+  return toMaterial(material);
+}
+
 function toMaterial(row: Record<string, unknown>): StudyMaterial {
   return {
     id: String(row['id']),

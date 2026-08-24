@@ -51,7 +51,9 @@ import {
   deleteStudyVocabulary,
   listStudyVocabulary,
   updateStudySegmentTiming,
+  deleteStudyMaterial,
 } from './study-store';
+import { rm } from 'node:fs/promises';
 import { detectSubtitleFormat, parseSubtitle } from './study-subtitles';
 import { cutAudioSegment, extractAudio } from './study-audio';
 import { transcribeWithLocalWhisper } from './study-transcription';
@@ -298,6 +300,24 @@ app.get(
       return;
     }
     res.json(material);
+  }),
+);
+
+app.delete(
+  '/api/study/materials/:id',
+  asyncRoute(async (req, res) => {
+    const userId = (req as AuthenticatedRequest).userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Authentication required.' });
+      return;
+    }
+    const material = deleteStudyMaterial(userId, req.params['id']);
+    if (!material) {
+      res.status(404).json({ error: 'Study material not found.' });
+      return;
+    }
+    await rm(dirname(material.audioPath), { recursive: true, force: true });
+    res.status(204).send();
   }),
 );
 

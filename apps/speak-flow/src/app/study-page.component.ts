@@ -309,10 +309,19 @@ export class StudyPageComponent {
   } | null>(null);
   readonly busy = signal(false);
   readonly error = signal('');
+  readonly vocabulary = signal<
+    Array<{
+      id: string;
+      word: string;
+      dictionaryUrl: string;
+      sourceText: string;
+    }>
+  >([]);
   private activeAudio?: HTMLAudioElement;
 
   constructor() {
     void this.loadMaterials();
+    void this.loadVocabulary();
   }
 
   async loadMaterials(): Promise<void> {
@@ -339,6 +348,50 @@ export class StudyPageComponent {
         ),
       ),
     );
+  }
+
+  async loadVocabulary(): Promise<void> {
+    try {
+      this.vocabulary.set(
+        (
+          await firstValueFrom(
+            this.http.get<{
+              vocabulary: Array<{
+                id: string;
+                word: string;
+                dictionaryUrl: string;
+                sourceText: string;
+              }>;
+            }>('/api/study/vocabulary'),
+          )
+        ).vocabulary,
+      );
+    } catch {
+      this.error.set('Vocabulary could not be loaded.');
+    }
+  }
+  async deleteMaterial(material: StudyMaterial): Promise<void> {
+    await firstValueFrom(
+      this.http.delete(`/api/study/materials/${material.id}`),
+    );
+    this.selected.set(null);
+    await this.loadMaterials();
+  }
+  async saveTiming(
+    segment: StudySegment,
+    start: HTMLInputElement,
+    end: HTMLInputElement,
+  ): Promise<void> {
+    await firstValueFrom(
+      this.http.patch(
+        `/api/study/materials/${segment.materialId}/segments/${segment.id}`,
+        { startSeconds: Number(start.value), endSeconds: Number(end.value) },
+      ),
+    );
+    const material = this.materials().find(
+      ({ id }) => id === segment.materialId,
+    );
+    if (material) await this.selectMaterial(material);
   }
 
   async upload(
