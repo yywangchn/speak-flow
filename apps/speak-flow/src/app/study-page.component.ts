@@ -29,6 +29,15 @@ import type { StudySegment, StudyMaterial } from '../study-store';
             </p>
           </div>
           <a routerLink="/chat" class="back-link">Back to chat</a>
+          @if (selected()) {
+            <button
+              class="back-materials"
+              type="button"
+              (click)="selected.set(null)"
+            >
+              Back to materials
+            </button>
+          }
         </header>
         @if (selected(); as current) {
           <div class="player-bar">
@@ -72,7 +81,7 @@ import type { StudySegment, StudyMaterial } from '../study-store';
                 <div class="sentence-content">
                   <p class="sentence-text">
                     @for (word of words(segment.text); track $index) {
-                      @if (word.trim()) {
+                      @if (word.trim() && isVocabularyWord(word)) {
                         <button
                           class="vocab-word"
                           type="button"
@@ -140,43 +149,22 @@ import type { StudySegment, StudyMaterial } from '../study-store';
           </p>
         }
       </section>
-      <section class="library" aria-label="Study library">
-        <h2>Your materials</h2>
-        @for (material of materials(); track material.id) {
-          <button
-            class="material"
-            type="button"
-            (click)="selectMaterial(material)"
-          >
-            {{ material.title }} <span>{{ material.status }}</span>
-          </button>
-        } @empty {
-          <p>No materials yet.</p>
-        }
-        @if (selected(); as current) {
-          @for (segment of current.segments; track segment.id) {
-            <article class="segment">
-              <span>{{ segment.index + 1 }}</span>
-              <p>
-                @for (word of words(segment.text); track $index) {
-                  @if (word.trim()) {
-                    <button
-                      class="word"
-                      type="button"
-                      (click)="saveWord(word, segment)"
-                    >
-                      {{ word }}
-                    </button>
-                  } @else {
-                    {{ word }}
-                  }
-                }
-              </p>
-              <button type="button" (click)="play(segment)">Play</button>
-            </article>
+      @if (!selected()) {
+        <section class="library" aria-label="Study library">
+          <h2>Your materials</h2>
+          @for (material of materials(); track material.id) {
+            <button
+              class="material"
+              type="button"
+              (click)="selectMaterial(material)"
+            >
+              {{ material.title }} <span>{{ material.status }}</span>
+            </button>
+          } @empty {
+            <p>No materials yet.</p>
           }
-        }
-      </section>
+        </section>
+      }
     </main>
   `,
   styles: `
@@ -367,6 +355,15 @@ import type { StudySegment, StudyMaterial } from '../study-store';
     .back-link {
       color: #1f6b52;
       white-space: nowrap;
+    }
+    .back-materials {
+      margin-top: 8px;
+      border: 0;
+      background: transparent;
+      color: #1f6b52;
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.78rem;
     }
     .import-grid {
       display: grid;
@@ -660,6 +657,11 @@ export class StudyPageComponent {
 
   words(text: string): string[] {
     return text.split(/(\s+)/);
+  }
+
+  isVocabularyWord(word: string): boolean {
+    const normalized = word.toLowerCase().replace(/[^a-z'-]/g, '');
+    return this.vocabulary().some((item) => item.word === normalized);
   }
 }
 
