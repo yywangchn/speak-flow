@@ -221,6 +221,7 @@ import type { StudySegment, StudyMaterial } from '../study-store';
       color: #1f6b52;
     }
     .study-panel {
+      grid-column: 2;
       background: #fff;
       border: 1px solid #dfe7e1;
       border-radius: 8px;
