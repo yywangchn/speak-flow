@@ -104,18 +104,28 @@ import type { StudySegment, StudyMaterial } from '../study-store';
       display: grid;
       grid-template-columns: 160px minmax(0, 820px);
       gap: 24px;
-      align-items: center;
+      align-items: start;
       justify-content: center;
       padding: 32px 24px;
+      overflow: visible;
       box-sizing: border-box;
       background: #f5f7f4;
       color: #1f2a24;
       font-family: Inter, ui-sans-serif, system-ui, sans-serif;
     }
     .module-switcher {
+      position: fixed;
+      left: 24px;
+      top: 50%;
       display: grid;
       gap: 4px;
-      align-self: center;
+      transform: translateY(-50%);
+      z-index: 10;
+      padding: 6px;
+      border: 1px solid #dfe7e1;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 8px 24px rgba(38, 65, 50, 0.1);
     }
     .module-switcher a {
       padding: 10px 12px;
@@ -261,9 +271,15 @@ import type { StudySegment, StudyMaterial } from '../study-store';
         background: #fff;
       }
       .module-switcher {
+        position: static;
         display: flex;
         padding: 12px 20px;
         border-bottom: 1px solid #e8ede9;
+        transform: none;
+        border-radius: 0;
+        border-left: 0;
+        border-right: 0;
+        box-shadow: none;
       }
       .module-switcher a {
         border-left: 0;

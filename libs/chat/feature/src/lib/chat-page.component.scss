@@ -16,10 +16,16 @@
 .module-switcher {
   position: fixed;
   top: 50%;
-  left: max(24px, calc(50% - 470px));
+  left: 24px;
   display: grid;
   gap: 4px;
   transform: translateY(-50%);
+  z-index: 10;
+  padding: 6px;
+  border: 1px solid #dfe7e1;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 24px rgba(38, 65, 50, 0.1);
 }
 .module-switcher a {
   padding: 10px 12px;
