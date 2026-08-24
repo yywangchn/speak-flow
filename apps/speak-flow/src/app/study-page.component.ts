@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -8,7 +9,7 @@ import type { StudySegment, StudyMaterial } from '../study-store';
 @Component({
   selector: 'app-study-page',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, DecimalPipe],
   template: `
     <main class="study-shell">
       <nav class="module-switcher" aria-label="SpeakFlow modules">
@@ -21,7 +22,7 @@ import type { StudySegment, StudyMaterial } from '../study-store';
         <header class="study-header">
           <div>
             <p class="eyebrow">Audio study</p>
-            <h1>Learn from your own audio</h1>
+            <h1>{{ selected()?.material?.title ?? 'Audio lesson' }}</h1>
             <p class="intro">
               Upload audio or video. Subtitle files are optional; without one,
               local Whisper will generate the transcript.
@@ -29,35 +30,115 @@ import type { StudySegment, StudyMaterial } from '../study-store';
           </div>
           <a routerLink="/chat" class="back-link">Back to chat</a>
         </header>
-        <div class="import-grid">
-          <label
-            >Audio or video file<input
-              #audio
-              type="file"
-              accept="audio/*,video/*,.mp4,.mov,.mkv,.webm,.avi"
-          /></label>
-          <label
-            >Subtitle or text file (optional)<input
-              type="file"
-              #subtitle
-              accept=".srt,.vtt,.lrc,.txt,text/plain"
-          /></label>
-        </div>
-        <button
-          class="upload"
-          type="button"
-          [disabled]="busy()"
-          (click)="upload(audio, subtitle)"
-        >
-          {{ busy() ? 'Processing...' : 'Add to study library' }}
-        </button>
-        @if (error()) {
-          <p class="error" role="alert">{{ error() }}</p>
+        @if (selected(); as current) {
+          <div class="player-bar">
+            <button
+              class="primary-action"
+              type="button"
+              (click)="play(current.segments[0])"
+            >
+              ▶ Start / replay</button
+            ><span>{{ current.segments.length }} sentences</span
+            ><label
+              >Speed
+              <select
+                [value]="speed()"
+                (change)="speed.set(+$any($event.target).value)"
+              >
+                <option value="0.75">0.75x</option>
+                <option value="1">1.00x</option>
+                <option value="1.25">1.25x</option>
+              </select></label
+            ><label>Repeat <input value="1" type="number" min="1" /></label
+            ><label
+              >Pause <input value="1.5" type="number" step="0.5" /> sec</label
+            ><label><input type="checkbox" checked /> Auto continue</label>
+          </div>
+          <div class="lesson-options">
+            <label
+              ><input
+                type="checkbox"
+                [checked]="showTranslation()"
+                (change)="showTranslation.set(!showTranslation())"
+              />
+              Show translation</label
+            ><button type="button">Export backup</button
+            ><button type="button">Import backup</button>
+          </div>
+          <div class="sentence-list">
+            @for (segment of current.segments; track segment.id) {
+              <article class="sentence-card">
+                <div class="sentence-number">{{ segment.index + 1 }}</div>
+                <div class="sentence-content">
+                  <p class="sentence-text">
+                    @for (word of words(segment.text); track $index) {
+                      @if (word.trim()) {
+                        <button
+                          class="vocab-word"
+                          type="button"
+                          (click)="saveWord(word, segment)"
+                        >
+                          {{ word }}
+                        </button>
+                      } @else {
+                        {{ word }}
+                      }
+                    }
+                  </p>
+                  @if (showTranslation()) {
+                    <p class="translation">Translation will appear here.</p>
+                  }
+                </div>
+                <div class="sentence-actions">
+                  <button type="button" (click)="play(segment)">▶ Play</button
+                  ><small>{{ segment.startSeconds | number: '1.1-1' }}s</small>
+                  <div class="nudge">
+                    <button type="button">-.5</button
+                    ><button type="button">-.1</button
+                    ><button
+                      class="add-word"
+                      type="button"
+                      (click)="saveWord(segment.text.split(' ')[0], segment)"
+                    >
+                      ＋ Word</button
+                    ><button type="button">+.1</button
+                    ><button type="button">+.5</button>
+                  </div>
+                </div>
+              </article>
+            }
+          </div>
+        } @else {
+          <div class="import-grid">
+            <label
+              >Audio or video file<input
+                #audio
+                type="file"
+                accept="audio/*,video/*,.mp4,.mov,.mkv,.webm,.avi"
+            /></label>
+            <label
+              >Subtitle or text file (optional)<input
+                type="file"
+                #subtitle
+                accept=".srt,.vtt,.lrc,.txt,text/plain"
+            /></label>
+          </div>
+          <button
+            class="upload"
+            type="button"
+            [disabled]="busy()"
+            (click)="upload(audio, subtitle)"
+          >
+            {{ busy() ? 'Processing...' : 'Add to study library' }}
+          </button>
+          @if (error()) {
+            <p class="error" role="alert">{{ error() }}</p>
+          }
+          <p class="processing-note">
+            Timestamp subtitles will be cut directly. Plain text will use local
+            forced alignment.
+          </p>
         }
-        <p class="processing-note">
-          Timestamp subtitles will be cut directly. Plain text will use local
-          forced alignment.
-        </p>
       </section>
       <section class="library" aria-label="Study library">
         <h2>Your materials</h2>
@@ -152,6 +233,119 @@ import type { StudySegment, StudyMaterial } from '../study-store';
       gap: 24px;
       padding: 32px;
       border-bottom: 1px solid #e8ede9;
+    }
+    .player-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+      margin: 0 16px;
+      background: #f2f4f4;
+      border-radius: 6px;
+      font-size: 0.78rem;
+    }
+    .player-bar label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.78rem;
+    }
+    .player-bar input,
+    .player-bar select {
+      width: auto;
+      padding: 4px 6px;
+      font-size: 0.78rem;
+    }
+    .primary-action {
+      padding: 7px 10px;
+      border: 0;
+      border-radius: 4px;
+      background: #ef5b43;
+      color: white;
+      cursor: pointer;
+    }
+    .lesson-options {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 16px;
+      font-size: 0.78rem;
+    }
+    .lesson-options button {
+      padding: 5px 8px;
+      border: 1px solid #e4dfce;
+      background: #fffdf4;
+      color: #69736c;
+      cursor: pointer;
+    }
+    .sentence-list {
+      padding: 0 16px 24px;
+      background: #fbf8ee;
+    }
+    .sentence-card {
+      display: grid;
+      grid-template-columns: 30px 1fr auto;
+      gap: 10px;
+      align-items: start;
+      margin-top: 8px;
+      padding: 12px 10px 8px;
+      border: 1px solid #e6e2d5;
+      border-radius: 6px;
+      background: #fff;
+    }
+    .sentence-number {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #f5f2e8;
+      color: #7c857b;
+      text-align: center;
+      line-height: 22px;
+      font-size: 0.72rem;
+    }
+    .sentence-text {
+      margin: 0;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+    .vocab-word {
+      border: 0;
+      border-bottom: 2px solid #6ab99e;
+      background: #f5d84a;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      padding: 0 2px;
+    }
+    .translation {
+      margin: 4px 0 0;
+      color: #8a8f87;
+      font-size: 0.76rem;
+    }
+    .sentence-actions {
+      display: grid;
+      justify-items: end;
+      gap: 4px;
+    }
+    .sentence-actions button {
+      padding: 4px 7px;
+      border: 1px solid #e2ded0;
+      border-radius: 4px;
+      background: #fffdf4;
+      color: #6f766d;
+      cursor: pointer;
+      font-size: 0.72rem;
+    }
+    .sentence-actions small {
+      color: #8b9188;
+    }
+    .nudge {
+      display: flex;
+      gap: 3px;
+    }
+    .nudge .add-word {
+      color: #ee6a57;
     }
     .eyebrow {
       margin: 0 0 8px;
@@ -317,6 +511,8 @@ import type { StudySegment, StudyMaterial } from '../study-store';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StudyPageComponent {
+  readonly showTranslation = signal(true);
+  readonly speed = signal(1);
   private readonly http = inject(HttpClient);
   readonly materials = signal<StudyMaterial[]>([]);
   readonly selected = signal<{
