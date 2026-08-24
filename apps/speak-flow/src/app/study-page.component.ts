@@ -170,13 +170,15 @@ import type { StudySegment, StudyMaterial } from '../study-store';
   styles: `
     .study-shell {
       min-height: 100vh;
+      height: 100vh;
       display: grid;
       grid-template-columns: 160px minmax(0, 820px);
       gap: 24px;
       align-items: start;
       justify-content: center;
       padding: 32px 24px;
-      overflow: visible;
+      overflow-y: auto;
+      overflow-x: hidden;
       box-sizing: border-box;
       background: #f5f7f4;
       color: #1f2a24;
