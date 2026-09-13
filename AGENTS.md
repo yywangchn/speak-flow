@@ -64,6 +64,7 @@ libs/
 - 使用 Standalone Component，不创建 NgModule。
 - 业务组件默认使用 `ChangeDetectionStrategy.OnPush`；特殊情况可以说明原因后使用 Default。
 - Angular 组件样式统一使用 SCSS；Nx generator 的组件样式默认值保持为 `scss`。
+- 每个 Angular 组件必须将 TypeScript、模板和样式拆分为同目录下的独立 `.ts`、`.html` 和 `.scss` 文件，并通过 `templateUrl` 和 `styleUrl` 引用；禁止使用内联 `template`、`styles` 或在模板中编写 `<style>`。
 - 优先使用 `inject()` 进行依赖注入。
 - 非简单表单使用 Angular Reactive Forms。
 - 顶级业务页面使用懒加载路由，小型 UI 组件不做不必要的懒加载。
@@ -114,7 +115,7 @@ libs/
 ## UI 样式
 
 - 聊天主界面必须保持极简，只展示完成核心对话所需的信息和操作；设置、偏好开关、管理入口等非核心控件默认不得放入聊天主界面，确需新增时应先确认产品必要性和放置位置。
-- `apps/speak-flow/src/app/practice-welcome.ts` 是本项目 UI 样式的主要参考文件；新增页面和组件应优先参考其中的排版、间距、色彩、响应式布局和交互状态。
+- `apps/speak-flow/src/app/practice-welcome.html` 和 `apps/speak-flow/src/app/practice-welcome.scss` 是本项目 UI 样式的主要参考文件；新增页面和组件应优先参考其中的排版、间距、色彩、响应式布局和交互状态。
 - 业务组件样式仍使用独立的 SCSS 文件，只提取实际需要的设计规则，不要复制整个 starter 模板或无关的全局 reset 样式。
 - 当设计决策与参考文件不一致时，应在组件或 feature 的边界内明确实现，避免把一次性业务样式扩散到全局。
 

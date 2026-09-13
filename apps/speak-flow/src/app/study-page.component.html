@@ -1,0 +1,152 @@
+<main class="study-shell">
+  <nav class="module-switcher" aria-label="SpeakFlow modules">
+    <a routerLink="/chat">AI Chat</a>
+    <a class="active" routerLink="/study" aria-current="page">Audio Study</a>
+  </nav>
+  <section class="study-panel">
+    <header class="study-header">
+      <div>
+        <p class="eyebrow">Audio study</p>
+        <h1>{{ selected()?.material?.title ?? 'Audio lesson' }}</h1>
+        <p class="intro">
+          Upload audio or video. Subtitle files are optional; without one, local
+          Whisper will generate the transcript.
+        </p>
+      </div>
+      <a routerLink="/chat" class="back-link">Back to chat</a>
+      @if (selected()) {
+        <button
+          class="back-materials"
+          type="button"
+          (click)="selected.set(null)"
+        >
+          Back to materials
+        </button>
+      }
+    </header>
+    @if (selected(); as current) {
+      <div class="player-bar">
+        <button
+          class="primary-action"
+          type="button"
+          (click)="play(current.segments[0])"
+        >
+          ▶ Start / replay</button
+        ><span>{{ current.segments.length }} sentences</span
+        ><label
+          >Speed
+          <select
+            [value]="speed()"
+            (change)="speed.set(+$any($event.target).value)"
+          >
+            <option value="0.75">0.75x</option>
+            <option value="1">1.00x</option>
+            <option value="1.25">1.25x</option>
+          </select></label
+        ><label>Repeat <input value="1" type="number" min="1" /></label
+        ><label>Pause <input value="1.5" type="number" step="0.5" /> sec</label
+        ><label><input type="checkbox" checked /> Auto continue</label>
+      </div>
+      <div class="lesson-options">
+        <label
+          ><input
+            type="checkbox"
+            [checked]="showTranslation()"
+            (change)="showTranslation.set(!showTranslation())"
+          />
+          Show translation</label
+        ><button type="button">Export backup</button
+        ><button type="button">Import backup</button>
+      </div>
+      <div class="sentence-list">
+        @for (segment of current.segments; track segment.id) {
+          <article class="sentence-card">
+            <div class="sentence-number">{{ segment.index + 1 }}</div>
+            <div class="sentence-content">
+              <p class="sentence-text">
+                @for (word of words(segment.text); track $index) {
+                  @if (word.trim() && isVocabularyWord(word)) {
+                    <button
+                      class="vocab-word"
+                      type="button"
+                      (click)="saveWord(word, segment)"
+                    >
+                      {{ word }}
+                    </button>
+                  } @else {
+                    {{ word }}
+                  }
+                }
+              </p>
+              @if (showTranslation()) {
+                <p class="translation">Translation will appear here.</p>
+              }
+            </div>
+            <div class="sentence-actions">
+              <button type="button" (click)="play(segment)">▶ Play</button
+              ><small>{{ segment.startSeconds | number: '1.1-1' }}s</small>
+              <div class="nudge">
+                <button type="button">-.5</button
+                ><button type="button">-.1</button
+                ><button
+                  class="add-word"
+                  type="button"
+                  (click)="saveWord(segment.text.split(' ')[0], segment)"
+                >
+                  ＋ Word</button
+                ><button type="button">+.1</button
+                ><button type="button">+.5</button>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+    } @else {
+      <div class="import-grid">
+        <label
+          >Audio or video file<input
+            #audio
+            type="file"
+            accept="audio/*,video/*,.mp4,.mov,.mkv,.webm,.avi"
+        /></label>
+        <label
+          >Subtitle or text file (optional)<input
+            type="file"
+            #subtitle
+            accept=".srt,.vtt,.lrc,.txt,text/plain"
+        /></label>
+      </div>
+      <button
+        class="upload"
+        type="button"
+        [disabled]="busy()"
+        (click)="upload(audio, subtitle)"
+      >
+        {{ busy() ? 'Processing...' : 'Add to study library' }}
+      </button>
+      @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+      }
+      <p class="processing-note">
+        Timestamp subtitles will be cut directly. Plain text will use local
+        forced alignment.
+      </p>
+    }
+  </section>
+  @if (!selected()) {
+    <section class="library" aria-label="Study library">
+      <h2>Your materials</h2>
+      @for (material of materials(); track material.id) {
+        <button
+          class="material"
+          type="button"
+          (click)="selectMaterial(material)"
+        >
+          {{ material.title }} <span>{{ material.status }}</span>
+        </button>
+      } @empty {
+        <p>No materials yet.</p>
+      }
+    </section>
+  }
+</main>

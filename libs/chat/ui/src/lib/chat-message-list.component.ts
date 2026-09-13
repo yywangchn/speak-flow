@@ -15,73 +15,7 @@ import { MarkdownComponent } from 'ngx-markdown';
   selector: 'chat-message-list',
   standalone: true,
   imports: [MarkdownComponent],
-  template: `
-    <div
-      #messageContainer
-      class="messages"
-      aria-live="polite"
-      (scroll)="onScroll()"
-    >
-      @for (message of messages(); track message.id) {
-        <div class="message" [class.user-message]="message.role === 'user'">
-          <div class="message-heading">
-            <span class="message-role">{{
-              message.role === 'user' ? 'You' : 'SpeakFlow'
-            }}</span>
-            @if (message.role === 'assistant') {
-              <div class="message-actions">
-                <button
-                  class="message-action"
-                  type="button"
-                  [attr.aria-expanded]="isExpanded(message.id)"
-                  [attr.aria-label]="
-                    isExpanded(message.id)
-                      ? 'Hide reply text'
-                      : 'Show reply text'
-                  "
-                  (click)="toggleExpanded(message.id)"
-                >
-                  {{ isExpanded(message.id) ? 'Hide text' : 'Show text' }}
-                </button>
-                <button
-                  class="message-action play-action"
-                  type="button"
-                  [attr.aria-label]="'Play reply aloud'"
-                  title="Play reply aloud"
-                  (click)="playRequested.emit(message.text)"
-                >
-                  <span aria-hidden="true">&#9654;</span>
-                  Play
-                </button>
-              </div>
-            }
-          </div>
-          @if (message.role === 'user' || isExpanded(message.id)) {
-            <markdown
-              class="message-content"
-              [data]="message.text"
-              (ready)="onMarkdownReady(message.id)"
-            />
-          } @else {
-            <div class="hidden-reply" aria-label="Reply text hidden">
-              Reply hidden
-            </div>
-          }
-        </div>
-      }
-    </div>
-    @if (showLatest()) {
-      <button
-        class="latest-button"
-        type="button"
-        title="Go to latest message"
-        aria-label="Go to latest message"
-        (click)="scrollToLatest()"
-      >
-        ↓
-      </button>
-    }
-  `,
+  templateUrl: './chat-message-list.component.html',
   styleUrl: './chat-message-list.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
