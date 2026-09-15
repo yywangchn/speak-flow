@@ -5,11 +5,12 @@ import { inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import type { StudySegment, StudyMaterial } from '../study-store';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-study-page',
   standalone: true,
-  imports: [RouterLink, DecimalPipe],
+  imports: [RouterLink, DecimalPipe, ReactiveFormsModule],
   templateUrl: './study-page.component.html',
   styleUrl: './study-page.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,6 +35,7 @@ export class StudyPageComponent {
     }>
   >([]);
   private activeAudio?: HTMLAudioElement;
+  readonly searchControl = new FormControl('', { nonNullable: true });
 
   constructor() {
     void this.loadMaterials();

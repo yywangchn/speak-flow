@@ -135,7 +135,17 @@
   </section>
   @if (!selected()) {
     <section class="library" aria-label="Study library">
-      <h2>Your materials</h2>
+      <div class="library-toolbar">
+        <h2>Your materials</h2>
+        <input
+          class="material-search"
+          type="search"
+          aria-label="Search materials by title"
+          [formControl]="searchControl"
+          placeholder="Search materials..."
+        />
+      </div>
+
       @for (material of materials(); track material.id) {
         <button
           class="material"
