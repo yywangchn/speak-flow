@@ -6,7 +6,6 @@ import {
 } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
-import { fromAjax } from 'rxjs/internal/ajax/ajax';
 
 const testMaterials = [
   {
