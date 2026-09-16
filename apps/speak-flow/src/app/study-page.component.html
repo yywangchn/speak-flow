@@ -146,7 +146,7 @@
         />
       </div>
 
-      @for (material of materials(); track material.id) {
+      @for (material of filteredMaterials$ | async; track material.id) {
         <button
           class="material"
           type="button"
@@ -155,7 +155,11 @@
           {{ material.title }} <span>{{ material.status }}</span>
         </button>
       } @empty {
-        <p>No materials yet.</p>
+        @if (materials().length > 0) {
+          <p>No materials match your search.</p>
+        } @else {
+          <p>No materials yet.</p>
+        }
       }
     </section>
   }

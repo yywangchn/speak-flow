@@ -1,16 +1,25 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DecimalPipe, AsyncPipe } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import {
+  combineLatest,
+  debounceTime,
+  distinctUntilChanged,
+  firstValueFrom,
+  map,
+  Observable,
+  startWith,
+} from 'rxjs';
 import type { StudySegment, StudyMaterial } from '../study-store';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-study-page',
   standalone: true,
-  imports: [RouterLink, DecimalPipe, ReactiveFormsModule],
+  imports: [RouterLink, DecimalPipe, ReactiveFormsModule, AsyncPipe],
   templateUrl: './study-page.component.html',
   styleUrl: './study-page.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,6 +45,24 @@ export class StudyPageComponent {
   >([]);
   private activeAudio?: HTMLAudioElement;
   readonly searchControl = new FormControl('', { nonNullable: true });
+  readonly searchTerm$: Observable<string> =
+    this.searchControl.valueChanges.pipe(
+      map((value) => value.trim().toLowerCase()),
+      debounceTime(300),
+      distinctUntilChanged(),
+      startWith(''),
+    );
+  readonly filteredMaterials$: Observable<StudyMaterial[]> = combineLatest([
+    toObservable(this.materials),
+    this.searchTerm$,
+  ]).pipe(
+    map(([materials, searchTerm]) => {
+      if (searchTerm === '') return materials;
+      return materials.filter((material) =>
+        material.title.toLowerCase().includes(searchTerm),
+      );
+    }),
+  );
 
   constructor() {
     void this.loadMaterials();
