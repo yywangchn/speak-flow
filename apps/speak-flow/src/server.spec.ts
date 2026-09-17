@@ -7,6 +7,7 @@ import { ReadableStream } from 'node:stream/web';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { AuthenticatedRequest } from './auth-http';
 import type { CosyVoiceOptions } from './cosyvoice-client';
+import type { StudyMaterial } from './study-store';
 
 const testDirectory = mkdtempSync(join(tmpdir(), 'speak-flow-server-'));
 process.env['SPEAKFLOW_DATABASE_PATH'] = join(testDirectory, 'test.sqlite');
@@ -18,10 +19,12 @@ process.env['DASHSCOPE_BASE_URL'] = 'https://embedding.example.com';
 let handleChat: (typeof import('./server'))['handleChat'];
 let handleChatStream: (typeof import('./server'))['handleChatStream'];
 let handleHealth: (typeof import('./server'))['handleHealth'];
+let handleListStudyMaterials: (typeof import('./server'))['handleListStudyMaterials'];
 let handleSpeech: (typeof import('./server'))['handleSpeech'];
 let handleSpeechAudioStream: (typeof import('./server'))['handleSpeechAudioStream'];
 let memoryStore: typeof import('./memory-store');
 let chatStore: typeof import('./chat-store');
+let studyStore: typeof import('./study-store');
 let deepSeekPrompt = '';
 
 beforeAll(async () => {
@@ -29,10 +32,12 @@ beforeAll(async () => {
   handleChat = serverModule.handleChat;
   handleChatStream = serverModule.handleChatStream;
   handleHealth = serverModule.handleHealth;
+  handleListStudyMaterials = serverModule.handleListStudyMaterials;
   handleSpeech = serverModule.handleSpeech;
   handleSpeechAudioStream = serverModule.handleSpeechAudioStream;
   memoryStore = await import('./memory-store');
   chatStore = await import('./chat-store');
+  studyStore = await import('./study-store');
 });
 
 describe('speech API', () => {
@@ -575,5 +580,71 @@ describe('chat API memory retrieval', () => {
         expect.objectContaining({ role: 'assistant', content: 'Partial' }),
       ]),
     );
+  });
+});
+
+describe('study materials API', () => {
+  it('requires authentication to list materials', async () => {
+    const status = vi.fn().mockReturnThis();
+    const json = vi.fn();
+
+    await handleListStudyMaterials(
+      { query: {} } as unknown as AuthenticatedRequest,
+      { status, json } as unknown as Response,
+    );
+
+    expect(status).toHaveBeenCalledWith(401);
+    expect(json).toHaveBeenCalledWith({ error: 'Authentication required.' });
+  });
+
+  it('rejects a search parameter that is not a string', async () => {
+    const status = vi.fn().mockReturnThis();
+    const json = vi.fn();
+
+    await handleListStudyMaterials(
+      {
+        userId: 'study-api-invalid-search-user',
+        query: { search: ['angular', 'english'] },
+      } as unknown as AuthenticatedRequest,
+      { status, json } as unknown as Response,
+    );
+
+    expect(status).toHaveBeenCalledWith(400);
+    expect(json).toHaveBeenCalledWith({ error: 'Invalid search term.' });
+  });
+
+  it('returns only matching materials owned by the current user', async () => {
+    const userId = 'study-api-search-user';
+    const createMaterial = (ownerId: string, title: string): StudyMaterial =>
+      studyStore.createStudyMaterial({
+        userId: ownerId,
+        title,
+        audioPath: `/test-audio/${title}`,
+        subtitlePath: `/test-subtitles/${title}.srt`,
+        subtitleFormat: 'srt',
+      });
+
+    createMaterial(userId, 'Angular Reactive Forms.mp3');
+    createMaterial(userId, 'English Listening Practice.wav');
+    createMaterial('study-api-other-user', 'Angular Advanced.mp3');
+
+    const status = vi.fn().mockReturnThis();
+    const json = vi.fn();
+
+    await handleListStudyMaterials(
+      {
+        userId,
+        query: { search: '  ANGULAR  ' },
+      } as unknown as AuthenticatedRequest,
+      { status, json } as unknown as Response,
+    );
+
+    const body = json.mock.calls[0]?.[0] as
+      | { materials: StudyMaterial[] }
+      | undefined;
+    expect(status).not.toHaveBeenCalled();
+    expect(body?.materials.map(({ title }) => title)).toEqual([
+      'Angular Reactive Forms.mp3',
+    ]);
   });
 });

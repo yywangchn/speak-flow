@@ -150,12 +150,16 @@ export function updateStudySegmentTiming(
   );
 }
 
-export function listStudyMaterials(userId: string): StudyMaterial[] {
+export function listStudyMaterials(
+  userId: string,
+  searchTerm = '',
+): StudyMaterial[] {
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
   return database
     .prepare(
-      'SELECT * FROM study_materials WHERE user_id = ? ORDER BY created_at DESC',
+      'SELECT * FROM study_materials WHERE user_id = ? AND instr(lower(title), ?) > 0 ORDER BY created_at DESC',
     )
-    .all(userId)
+    .all(userId, normalizedSearchTerm)
     .map((row) => toMaterial(row as Record<string, unknown>));
 }
 

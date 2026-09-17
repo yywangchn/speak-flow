@@ -210,17 +210,7 @@ app.get(
   }),
 );
 
-app.get(
-  '/api/study/materials',
-  asyncRoute(async (req, res) => {
-    const userId = (req as AuthenticatedRequest).userId;
-    if (!userId) {
-      res.status(401).json({ error: 'Authentication required.' });
-      return;
-    }
-    res.json({ materials: listStudyMaterials(userId) });
-  }),
-);
+app.get('/api/study/materials', asyncRoute(handleListStudyMaterials));
 
 app.get(
   '/api/study/vocabulary',
@@ -447,6 +437,23 @@ app.post(
   '/api/speech/stream',
   (req, res, next) => void handleSpeechAudioStream(req, res).catch(next),
 );
+
+export async function handleListStudyMaterials(
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> {
+  const userId = req.userId;
+  if (!userId) {
+    res.status(401).json({ error: 'Authentication required.' });
+    return;
+  }
+  const search = req.query['search'];
+  if (search !== undefined && typeof search !== 'string') {
+    res.status(400).json({ error: 'Invalid search term.' });
+    return;
+  }
+  res.json({ materials: listStudyMaterials(userId, search ?? '') });
+}
 
 export async function handleSpeech(
   req: AuthenticatedRequest,

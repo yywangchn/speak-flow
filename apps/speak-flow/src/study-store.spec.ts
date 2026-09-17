@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { StudyMaterial } from './study-store';
+import { type StudyMaterial } from './study-store';
 
 const testDirectory = mkdtempSync(join(tmpdir(), 'speak-flow-study-'));
 const testDatabasePath = join(testDirectory, 'test.sqlite');
@@ -223,5 +223,18 @@ describe('study store', () => {
       .get(material.id) as { count: number };
     database.close();
     expect(segmentCount.count).toBe(0);
+  });
+
+  it('filters materials by normalized title without leaking other users', () => {
+    const angularMaterial = createMaterial(
+      'search-owner',
+      'Angular Reactive Forms.mp3',
+    );
+    createMaterial('search-owner', 'English Listening Practice.wav');
+    createMaterial('other-search-owner', 'Angular Advanced.mp3');
+
+    const result = studyStore.listStudyMaterials('search-owner', '  ANGULAR  ');
+    expect(result.length).toBe(1);
+    expect(result[0]?.id).toBe(angularMaterial.id);
   });
 });
